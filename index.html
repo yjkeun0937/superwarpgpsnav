@@ -84,9 +84,12 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .bt:active,.bt.act{background:var(--fg);color:#021}
 .ctl .bt{font-size:16px;background:rgba(0,0,0,.35);border:1px solid rgba(23,70,61,.9);color:var(--lab);padding:1px 4px}
 .ctl .bt.act{background:rgba(125,255,216,.9);color:#021}
-.unit.u1{font-size:30px;line-height:.82;width:66px;padding-bottom:5px}
+.unit.u1{display:flex;flex-direction:column;justify-content:space-between;align-self:stretch;font-size:28px;line-height:.8;width:62px;padding:2px 0 4px;text-shadow:none}
+.unit.u1 span{display:block;transition:opacity .2s,text-shadow .2s}
+#uM{color:var(--lab)}
+#uC{color:var(--fg);text-align:left}
 /* 중앙 메시지 */
-#toast{position:absolute;left:50%;top:31%;width:max-content;transform:translate(-50%,-50%) scale(.96);z-index:4;pointer-events:none;opacity:0;transition:opacity .25s,transform .25s;text-align:center;padding:10px 24px 9px;min-width:210px;max-width:86vw;border:2px solid var(--amb);background:rgba(2,8,6,.74);color:var(--amb);text-shadow:0 0 8px currentColor;box-shadow:0 0 18px rgba(255,178,28,.35)}
+#toast{position:absolute;left:50%;top:31%;width:max-content;transform:translate(-50%,-50%) scale(.96);z-index:4;pointer-events:none;opacity:0;transition:opacity .25s,transform .25s;text-align:center;padding:10px 24px 9px;box-sizing:border-box;min-width:210px;max-width:90vw;border:2px solid var(--amb);background:rgba(2,8,6,.74);color:var(--amb);text-shadow:0 0 8px currentColor;box-shadow:0 0 18px rgba(255,178,28,.35)}
 #toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
 #toast.ok{border-color:var(--fg);color:var(--fg);box-shadow:0 0 18px rgba(44,245,192,.35)}
 #toast.bad{border-color:var(--red);color:#ff7b70;box-shadow:0 0 18px rgba(255,65,54,.35)}
@@ -100,6 +103,13 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .hist .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hist .d{flex:none;font-size:11px;color:var(--lab)}
 .hist .none{font-size:12px;color:#2c7a6a}
+.srow{display:flex;gap:6px}.srow input{flex:1;min-width:0;width:auto}
+.srow .bt{flex:none;width:66px;font-size:18px;padding:0 4px}
+.cand{max-height:214px;overflow:auto}
+.cand button{flex-direction:column;align-items:stretch;gap:1px}
+.cand button .a{font-size:11px;color:var(--lab);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cand button.sel{background:rgba(125,255,216,.22);border-color:var(--fg)}
+.cand button.sel .n::before{content:'▶ ';color:var(--amb)}
 /* 설정 오버레이 */
 .ov{position:fixed;inset:0;z-index:20;background:rgba(0,5,4,.8);display:flex;align-items:center;justify-content:center;padding:14px}
 .ov.hide{display:none}
@@ -171,7 +181,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
       <div class="brow">
         <div class="spd">
           <div class="lb">속도 · WARP SPEED</div>
-          <div class="rowx"><span class="seg s68"><span class="gh">888</span><span class="vl" id="spd">  0</span></span><span class="unit u1" id="spdUnit">× C</span></div>
+          <div class="rowx"><span class="seg s68"><span class="gh">888</span><span class="vl" id="spd">  0</span></span><span class="unit u1" id="spdUnit"><span id="uM">MACH</span><span id="uC">C</span></span></div>
         </div>
         <div class="deco">
           <div class="dl"><span>ENERGY</span><b id="enPct">100%</b></div>
@@ -215,7 +225,8 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
     </div>
 
     <div class="pane" id="pGps">
-      <div class="fld"><label>목적지 (주소 또는 장소명)</label><input id="dest" type="text" placeholder="예: 서울역"></div>
+      <div class="fld"><label>목적지 (주소 또는 장소명)</label><div class="srow"><input id="dest" type="text" placeholder="예: 서울역" enterkeyhint="search" autocomplete="off"><button class="bt" id="bFind" type="button">검색</button></div></div>
+      <div class="fld" id="candFld" style="display:none"><label id="candLb">검색 결과 (눌러서 선택)</label><div class="hist cand" id="cand"></div></div>
       <div class="fld"><label>최근 목적지 (누르면 입력창에 채워집니다)</label><div class="hist" id="hist"></div></div>
       <button class="bt go" id="goGps">GPS LOCK &amp; ENGAGE ▶</button>
       <div id="gpsStatus"></div>
@@ -236,7 +247,7 @@ const LY_PER_KM=1000;  // 1 km = 1,000 광년
 /* ---------------- 상태 ---------------- */
 const S={mode:'idle',running:false,t:0,s:0,v:0,vAvg:50,total:0,maneuvers:[],idx:0,ts:10,
   w:1,warpOn:true,phi:0,turn:null,arrived:false,arrM:null,flash:0,side:1,cruise:60,snd:false,
-  traffic:null,sigLost:false,lastFixAt:0,dest:null,poly:null,pidx:0,rerouting:false,lastRe:0,neHue:220};
+  traffic:null,sigLost:false,lastFixAt:0,dest:null,poly:null,pidx:0,rerouting:false,lastRe:0,waiting:false,busy:false,retryAt:0,neHue:220};
 
 /* ---------------- 천체 ---------------- */
 const BODIES=[['케플러-442b','ocean'],['프록시마 b','rock'],['알파 센타우리 A','star'],['시리우스 B','star'],
@@ -289,7 +300,7 @@ function genTraffic(total){
   return a;
 }
 function initTrip(mode,ms,total){
-  S.mode=mode;S.maneuvers=ms;S.total=total;S.s=0;S.idx=0;S.turn=null;S.arrived=false;S.arrM=null;
+  S.waiting=false;S.mode=mode;S.maneuvers=ms;S.total=total;S.s=0;S.idx=0;S.turn=null;S.arrived=false;S.arrM=null;
   S.v=0;S.warpOn=false;S.w=Math.min(S.w,.3);S.cruise=60;S.vAvg=50;S.running=(mode==='sim');S.traffic=(mode==='sim')?genTraffic(total):null;
   $('dstGh').textContent=(Math.round(total*LY_PER_KM)>=100000)?'888,888':'88,888';
   $('lpArr').classList.remove('on');
@@ -578,7 +589,10 @@ const manText=m=>{const t=TXT[m.type];return (m.type==='R'||m.type==='L'||m.type
 function hud(){
   const active=S.mode!=='idle'&&S.total>0;
   setTxt('spd',pad(Math.round(S.v),3));
-  setTxt('spdUnit',S.w>.55?'× C':'× MACH');   // 워프: 광속 배수 / 임펄스: 마하
+  // 단위: 위 MACH / 아래 C. 워프(약 30km/h 이상)로 들어가면 C가 밝아지고 MACH는 어두워진다
+  const wq=Math.round(S.w*20);if(cache.wq!==wq){cache.wq=wq;const w=wq/20;
+    $('uC').style.opacity=(.2+.8*w).toFixed(2);$('uC').style.textShadow=w>.5?`0 0 ${Math.round(4+10*w)}px currentColor`:'none';
+    $('uM').style.opacity=(1-.78*w).toFixed(2)}
   const zc=ZC(S.v);if(cache.zc!==zc){cache.zc=zc;$('spd').style.setProperty('--zc',zc)}
   const rem=Math.max(0,S.total-S.s),big=Math.round(S.total*LY_PER_KM)>=100000;
   if(cache.big!==big){cache.big=big;$('dstGh').textContent=big?'888,888':'88,888'}
@@ -612,7 +626,11 @@ function hud(){
   setCls('lpRe','on',S.rerouting);
 
   const base=S.idx+(S.turn?1:0),nm=S.arrived?S.arrM:S.maneuvers[base],nn=S.arrived?null:S.maneuvers[base+1];
-  if(!active||!nm){
+  if(S.waiting&&S.mode==='gps'){
+    setTxt('navL1','AWAIT GPS');
+    setTxt('navL2','수신되면 항로를 자동 계산합니다');
+    setTxt('navL3',S.dest?'목적지 · '+S.dest.name:' ');setHTML('navSvg',arrowSVG('S',0));
+  }else if(!active||!nm){
     setTxt('navL1',S.arrived?'ARRIVED':'STANDBY');
     setTxt('navL2',S.arrived?'워프 항법 종료 — 목적지에 도착했습니다':'대기 중 — SETUP에서 항로를 설정하세요');
     setTxt('navL3',' ');setHTML('navSvg',arrowSVG(S.arrived?'ARR':'S',0));
@@ -661,7 +679,7 @@ function beep(f,dur,vol){
 /* ---------------- GPS 실주행 ---------------- */
 function setStatus(t,err){const e=$('gpsStatus');e.textContent=t;e.className=err?'err':''}
 async function getJSON(u){const r=await fetch(u);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
-function getPos(){return new Promise((ok,ng)=>{if(!navigator.geolocation)return ng(new Error('GPS 미지원'));navigator.geolocation.getCurrentPosition(ok,ng,{enableHighAccuracy:true,timeout:15000})})}
+function getPos(ms){return new Promise((ok,ng)=>{if(!navigator.geolocation)return ng(new Error('GPS 미지원'));navigator.geolocation.getCurrentPosition(ok,ng,{enableHighAccuracy:true,maximumAge:5000,timeout:ms||15000})})}
 function hav(a,b){const R=6371,r=Math.PI/180,dl=(b[1]-a[1])*r,dn=(b[0]-a[0])*r,x=Math.sin(dl/2)**2+Math.cos(a[1]*r)*Math.cos(b[1]*r)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
 function buildPoly(c){const cum=[0];for(let i=1;i<c.length;i++)cum[i]=cum[i-1]+hav(c[i-1],c[i]);return{c,cum,total:cum[cum.length-1]}}
 function projectOn(p,lat,lon,from,span){
@@ -708,8 +726,10 @@ function showToast(kind,title,sub,ms){
   if(ms)toastTimer=setTimeout(hideToast,ms);
 }
 function showLostToast(){showToast('warn blink','GPS 신호 소실','SIGNAL LOST · 추측 항법으로 진행 중',0)}
+function showWaitToast(){showToast('warn blink','GPS 신호 대기 중','WAITING FOR GPS FIX',0)}
 function hideToast(){
   clearTimeout(toastTimer);
+  if(S.waiting&&S.mode==='gps'){showWaitToast();return}   // 경로 없이 대기 중이면 대기 메시지를 유지
   if(S.sigLost&&S.mode==='gps'){showLostToast();return}   // 신호가 아직 없으면 소실 메시지를 유지
   $('toast').classList.remove('show');
 }
@@ -741,8 +761,19 @@ async function onFix(p){
   if(acc>150)return;   // 정확도 불량(터널 입구·고층 건물 사이 등)은 신호 없음으로 취급
   const gap=S.lastFixAt?now-S.lastFixAt:0;S.lastFixAt=now;
   if(S.sigLost){S.sigLost=false;showToast('ok','GPS 신호 재수신','SIGNAL REACQUIRED · 위치 재동기화',2500);beep(880,.08)}
-  if(S.arrived||S.rerouting)return;
   const lat=p.coords.latitude,lon=p.coords.longitude;
+  if(S.waiting){   // 목적지만 정해 둔 상태: 첫 위치가 들어오면 항로를 계산한다
+    if(S.busy||now<S.retryAt)return;
+    S.busy=true;showToast('ok','GPS 신호 수신','SIGNAL ACQUIRED · 항로를 계산합니다…',0);beep(880,.08);
+    try{
+      await buildRealRoute(lat,lon,false);
+      S.lastRe=Date.now();showToast('ok','항로 생성 완료','COURSE SET · 워프 항법을 시작합니다',2500);beep(1040,.1,.06);
+    }catch(e){
+      S.retryAt=Date.now()+8000;showToast('bad','항로 계산 실패','ROUTE ERROR · 잠시 후 다시 시도합니다',3000);
+    }
+    S.busy=false;return;
+  }
+  if(S.arrived||S.rerouting)return;
   let v=p.coords.speed!=null?p.coords.speed*3.6:(lastFix?hav([lastFix.lon,lastFix.lat],[lon,lat])/Math.max(.5,(now-lastFix.t)/1000)*3600:0);
   lastFix={lat,lon,t:now};S.v+=(v-S.v)*.6;
   // 오래 끊겼다가 다시 받으면 경로 전체(남은 구간)에서 위치를 찾는다
@@ -767,8 +798,8 @@ const HKEY='warpnav.history',HMAX=5;
 function loadHist(){
   try{const a=JSON.parse(localStorage.getItem(HKEY)||'[]');return Array.isArray(a)?a.filter(x=>x&&typeof x.n==='string'&&typeof x.t==='number').sort((x,y)=>y.t-x.t).slice(0,HMAX):[]}catch(e){return[]}
 }
-function saveHist(name,t){
-  try{let a=loadHist().filter(x=>x.n!==name);a.unshift({n:name,t});a.sort((x,y)=>y.t-x.t);localStorage.setItem(HKEY,JSON.stringify(a.slice(0,HMAX)))}catch(e){}
+function saveHist(name,t,lat,lon){
+  try{let a=loadHist().filter(x=>x.n!==name);a.unshift({n:name,t,lat,lon});a.sort((x,y)=>y.t-x.t);localStorage.setItem(HKEY,JSON.stringify(a.slice(0,HMAX)))}catch(e){}
 }
 const p2=n=>String(n).padStart(2,'0');
 const fmtDT=t=>{const d=new Date(t);return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`};
@@ -780,29 +811,76 @@ function renderHist(){
     const n=document.createElement('span');n.className='n';n.textContent=x.n;
     const d=document.createElement('span');d.className='d';d.textContent=fmtDT(x.t);
     b.appendChild(n);b.appendChild(d);
-    b.onclick=()=>{$('dest').value=x.n;$('dest').focus()};
+    b.onclick=()=>{
+      $('dest').value=x.n;
+      if(typeof x.lat==='number'&&typeof x.lon==='number'){chosen={name:x.n,lat:x.lat,lon:x.lon};showCands([],true);setStatus('이전 목적지를 선택했습니다. 다른 후보를 보려면 [검색]을 누르세요.')}
+      else{chosen=null;$('dest').focus()}
+    };
     box.appendChild(b);
   });
 }
 renderHist();
 
+/* ---- 목적지 검색 · 후보 선택 ---- */
+let chosen=null,finding=false;   // chosen: {name,lat,lon}
+const shortName=r=>((r.name&&r.name.trim())||String(r.display_name||'').split(',')[0]).trim();
+function showCands(list,hide){
+  const box=$('cand');box.textContent='';$('candFld').style.display=hide||!list.length?'none':'block';
+  list.forEach(c=>{
+    const b=document.createElement('button');b.type='button';
+    const n=document.createElement('span');n.className='n';n.textContent=c.name;
+    const a=document.createElement('span');a.className='a';a.textContent=c.sub;
+    b.appendChild(n);b.appendChild(a);
+    b.onclick=()=>{
+      chosen={name:c.name,lat:c.lat,lon:c.lon};$('dest').value=c.name;
+      box.querySelectorAll('button').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');
+      setStatus('목적지를 선택했습니다. GPS LOCK & ENGAGE를 누르세요.');
+    };
+    box.appendChild(b);
+  });
+}
+async function doSearch(){
+  const q=$('dest').value.trim();if(!q){setStatus('목적지를 입력하세요',1);return false}
+  if(finding)return false;finding=true;chosen=null;
+  try{
+    setStatus('목적지 검색 중…');
+    const g=await getJSON(`https://nominatim.openstreetmap.org/search?format=json&limit=7&accept-language=ko&q=${encodeURIComponent(q)}`);
+    const seen=new Set(),list=[];
+    g.forEach(r=>{
+      const name=shortName(r),k=name+'|'+(+r.lat).toFixed(3)+'|'+(+r.lon).toFixed(3);if(seen.has(k))return;seen.add(k);
+      const sub=String(r.display_name||'').split(',').slice(1,4).map(x=>x.trim()).filter(x=>x&&!/^\d+$/.test(x)).join(', ');
+      list.push({name,sub:sub||'-',lat:+r.lat,lon:+r.lon});
+    });
+    if(!list.length){showCands([],true);setStatus('검색 결과가 없습니다. 다른 이름이나 주소(시·구 포함)로 시도해 보세요.',1);return false}
+    $('candLb').textContent=`검색 결과 ${list.length}건 (눌러서 선택)`;showCands(list);
+    setStatus('목적지 후보를 눌러 선택한 뒤 GPS LOCK & ENGAGE를 누르세요.');return true;
+  }catch(e){
+    setStatus('검색 실패: '+(e&&e.message?e.message:'알 수 없는 오류')+' — 네트워크를 확인해 주세요.',1);return false;
+  }finally{finding=false}
+}
+$('bFind').onclick=doSearch;
+$('dest').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();doSearch()}});
+$('dest').addEventListener('input',()=>{if(chosen&&$('dest').value.trim()!==chosen.name){chosen=null;$('cand').querySelectorAll('button.sel').forEach(x=>x.classList.remove('sel'))}});
+
 async function engageGPS(){
   const q=$('dest').value.trim();if(!q){setStatus('목적지를 입력하세요',1);return}
+  if(!chosen||chosen.name!==q){await doSearch();return}   // 선택 전이면 후보부터 보여준다
   const t0=Date.now();
-  try{
-    setStatus('현재 위치 수신 중…');const p=await getPos();
-    setStatus('목적지 좌표 탐색 중…');
-    const g=await getJSON(`https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=ko&q=${encodeURIComponent(q)}`);
-    if(!g.length)throw new Error('목적지를 찾지 못했습니다');
-    S.dest={lat:+g[0].lat,lon:+g[0].lon,name:q};
-    saveHist(q,t0);renderHist();   // 목적지를 찾은 경우에만 기록
-    setStatus('항로 계산 중…');
-    await buildRealRoute(p.coords.latitude,p.coords.longitude,false);
-    S.lastRe=Date.now();startWatch();audioInit();hideToast();$('ov').classList.add('hide');setStatus('');
-    $('bTs').textContent='×1';$('bPause').textContent='PAUSE';
-  }catch(e){
-    setStatus('실패: '+(e&&e.message?e.message:'알 수 없는 오류')+' — 네트워크와 위치 권한을 확인해 주세요. 시뮬레이션 탭은 그대로 사용할 수 있습니다.',1);
+  S.dest={lat:chosen.lat,lon:chosen.lon,name:chosen.name};
+  saveHist(chosen.name,t0,chosen.lat,chosen.lon);renderHist();
+  let pos=null,denied=false;
+  try{setStatus('현재 위치 수신 중…');pos=await getPos(8000)}catch(e){denied=!!(e&&e.code===1)}
+  if(pos){
+    try{setStatus('항로 계산 중…');await buildRealRoute(pos.coords.latitude,pos.coords.longitude,false)}catch(e){pos=null}
   }
+  if(!pos){   // 위치를 못 받았거나 항로 계산이 안 됐으면: 목적지만 정해 두고 신호를 기다린다
+    initTrip('gps',[],0);S.waiting=true;S.retryAt=0;S.busy=false;
+  }
+  S.lastRe=Date.now();startWatch();audioInit();$('ov').classList.add('hide');setStatus('');
+  $('bTs').textContent='×1';$('bPause').textContent='PAUSE';
+  if(pos)hideToast();
+  else if(denied)showToast('bad','위치 권한 거부','PERMISSION DENIED · 허용 후 자동 진행',0);
+  else showWaitToast();
 }
 
 /* ---------------- UI ---------------- */
