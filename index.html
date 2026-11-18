@@ -53,15 +53,15 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .seg .gh{color:rgba(20,70,60,.75)}
 .seg .vl{position:absolute;right:0;top:0;color:var(--zc,var(--fg));text-shadow:0 0 6px currentColor,0 0 16px currentColor;white-space:pre}
 .seg.am .vl{color:var(--amb)}
-.s68{font-size:68px}.s42{font-size:42px}.s24{font-size:24px}
+.s68{font-size:64px}.s42{font-size:42px}.s24{font-size:24px}
 .unit{font:20px 'VT323',monospace;color:var(--lab);padding-bottom:2px;text-shadow:0 1px 3px #000}
 /* 하단 */
 #bottom{position:absolute;left:0;right:0;bottom:0;padding:0 10px max(6px,env(safe-area-inset-bottom))}
 .brow{display:flex;gap:10px;align-items:flex-end}
 .spd{flex:none}
 .spd .rowx{display:flex;align-items:flex-end;gap:4px}
-.deco{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;padding-bottom:4px}
-.dl{display:flex;justify-content:space-between;align-items:baseline;font-size:10px;color:var(--lab);text-shadow:0 1px 3px #000}
+.deco{flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column;gap:2px;padding-bottom:4px}
+.dl{display:flex;justify-content:space-between;align-items:baseline;white-space:nowrap;font-size:10px;color:var(--lab);text-shadow:0 1px 3px #000}
 .dl b{font:15px 'VT323',monospace;font-weight:400;color:var(--fg);text-shadow:var(--tsh)}
 .bar{display:flex;gap:2px;height:8px}
 .bar i{flex:1;background:rgba(15,60,52,.7)}
@@ -69,14 +69,14 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .bar i.on.am{background:var(--amb);box-shadow:0 0 6px #ffb21caa}
 .bar i.on.rd{background:var(--red);box-shadow:0 0 6px #ff4136aa}
 #gw{width:100%;height:22px;display:block}
-.inds{display:flex;gap:10px;font:14px 'VT323',monospace;color:var(--lab);text-shadow:0 1px 3px #000}
-.inds i{display:inline-block;width:9px;height:9px;margin-right:3px;background:#0b2823;vertical-align:-1px}
+.inds{display:flex;gap:6px;white-space:nowrap;font:13px 'VT323',monospace;color:var(--lab);text-shadow:0 1px 3px #000}
+.inds i{display:inline-block;width:8px;height:8px;margin-right:2px;background:#0b2823;vertical-align:-1px}
 .inds i.g{background:#5dffa0;box-shadow:0 0 6px #5dffa0}
 .inds i.c{background:#4de8ff;box-shadow:0 0 6px #4de8ff}
 .inds i.a{background:var(--amb);box-shadow:0 0 6px var(--amb)}
 .inds i.f{animation:bl 1.1s steps(2) infinite}
-.dial{flex:none;width:56px;text-align:center;padding-bottom:2px}
-.dial svg{width:56px;height:56px;display:block}
+.dial{flex:none;width:50px;text-align:center;padding-bottom:2px}
+.dial svg{width:50px;height:50px;display:block}
 .dial b{font:17px 'VT323',monospace;font-weight:400;color:var(--amb);text-shadow:0 0 6px #ffb21c88}
 #sg{display:block;width:100%;height:74px;margin-top:2px}
 .ctl{display:flex;gap:8px;margin-top:3px}
@@ -84,6 +84,22 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .bt:active,.bt.act{background:var(--fg);color:#021}
 .ctl .bt{font-size:16px;background:rgba(0,0,0,.35);border:1px solid rgba(23,70,61,.9);color:var(--lab);padding:1px 4px}
 .ctl .bt.act{background:rgba(125,255,216,.9);color:#021}
+.unit.u1{font-size:30px;line-height:.82;width:66px;padding-bottom:5px}
+/* 중앙 메시지 */
+#toast{position:absolute;left:50%;top:31%;width:max-content;transform:translate(-50%,-50%) scale(.96);z-index:4;pointer-events:none;opacity:0;transition:opacity .25s,transform .25s;text-align:center;padding:10px 24px 9px;min-width:210px;max-width:86vw;border:2px solid var(--amb);background:rgba(2,8,6,.74);color:var(--amb);text-shadow:0 0 8px currentColor;box-shadow:0 0 18px rgba(255,178,28,.35)}
+#toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#toast.ok{border-color:var(--fg);color:var(--fg);box-shadow:0 0 18px rgba(44,245,192,.35)}
+#toast.bad{border-color:var(--red);color:#ff7b70;box-shadow:0 0 18px rgba(255,65,54,.35)}
+#toast.blink b{animation:bl .8s steps(2) infinite}
+#toast b{display:block;font:700 28px 'Nanum Gothic Coding',monospace;letter-spacing:.04em}
+#toast span{display:block;font:19px 'VT323',monospace;letter-spacing:.08em;margin-top:2px;opacity:.9}
+/* 목적지 기록 */
+.hist{display:flex;flex-direction:column;gap:3px}
+.hist button{display:flex;justify-content:space-between;align-items:baseline;gap:10px;width:100%;text-align:left;font:14px 'Nanum Gothic Coding',monospace;background:#020c0a;color:var(--fg);border:1px solid var(--line);padding:6px 8px;cursor:pointer}
+.hist button:active{background:rgba(125,255,216,.2)}
+.hist .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist .d{flex:none;font-size:11px;color:var(--lab)}
+.hist .none{font-size:12px;color:#2c7a6a}
 /* 설정 오버레이 */
 .ov{position:fixed;inset:0;z-index:20;background:rgba(0,5,4,.8);display:flex;align-items:center;justify-content:center;padding:14px}
 .ov.hide{display:none}
@@ -106,6 +122,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 <div id="app">
   <canvas id="cv"></canvas>
   <div class="shade"></div>
+  <div id="toast"><b id="toastT"></b><span id="toastS"></span></div>
   <div id="hud">
     <div id="top">
       <div class="lamprow">
@@ -154,12 +171,12 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
       <div class="brow">
         <div class="spd">
           <div class="lb">속도 · WARP SPEED</div>
-          <div class="rowx"><span class="seg s68"><span class="gh">888</span><span class="vl" id="spd">  0</span></span><span class="unit">× C</span></div>
+          <div class="rowx"><span class="seg s68"><span class="gh">888</span><span class="vl" id="spd">  0</span></span><span class="unit u1" id="spdUnit">× C</span></div>
         </div>
         <div class="deco">
-          <div class="dl"><span>ENERGY 에너지</span><b id="enPct">100%</b></div>
+          <div class="dl"><span>ENERGY</span><b id="enPct">100%</b></div>
           <div class="bar" id="enBar"></div>
-          <div class="dl"><span>G-FIELD 중력장</span><b id="gVal">1.00 G</b></div>
+          <div class="dl"><span>G-FIELD</span><b id="gVal">1.00 G</b></div>
           <canvas id="gw"></canvas>
           <div class="inds"><span><i id="i1"></i>SHLD</span><span><i id="i2"></i>DFLT</span><span><i id="i3"></i>CORE</span></div>
         </div>
@@ -199,6 +216,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 
     <div class="pane" id="pGps">
       <div class="fld"><label>목적지 (주소 또는 장소명)</label><input id="dest" type="text" placeholder="예: 서울역"></div>
+      <div class="fld"><label>최근 목적지 (누르면 입력창에 채워집니다)</label><div class="hist" id="hist"></div></div>
       <button class="bt go" id="goGps">GPS LOCK &amp; ENGAGE ▶</button>
       <div id="gpsStatus"></div>
       <p class="hint">GPS 모드는 위치 권한과 외부 지도 서버(OSRM·Nominatim) 접속이 필요합니다. HTTPS로 직접 호스팅한 페이지에서 동작하며, 이 미리보기 화면에서는 차단될 수 있습니다. 운전 중에는 화면을 조작하지 마세요.</p>
@@ -218,7 +236,7 @@ const LY_PER_KM=1000;  // 1 km = 1,000 광년
 /* ---------------- 상태 ---------------- */
 const S={mode:'idle',running:false,t:0,s:0,v:0,vAvg:50,total:0,maneuvers:[],idx:0,ts:10,
   w:1,warpOn:true,phi:0,turn:null,arrived:false,arrM:null,flash:0,side:1,cruise:60,snd:false,
-  traffic:null,dest:null,poly:null,pidx:0,rerouting:false,lastRe:0,neHue:220};
+  traffic:null,sigLost:false,lastFixAt:0,dest:null,poly:null,pidx:0,rerouting:false,lastRe:0,neHue:220};
 
 /* ---------------- 천체 ---------------- */
 const BODIES=[['케플러-442b','ocean'],['프록시마 b','rock'],['알파 센타우리 A','star'],['시리우스 B','star'],
@@ -560,6 +578,7 @@ const manText=m=>{const t=TXT[m.type];return (m.type==='R'||m.type==='L'||m.type
 function hud(){
   const active=S.mode!=='idle'&&S.total>0;
   setTxt('spd',pad(Math.round(S.v),3));
+  setTxt('spdUnit',S.w>.55?'× C':'× MACH');   // 워프: 광속 배수 / 임펄스: 마하
   const zc=ZC(S.v);if(cache.zc!==zc){cache.zc=zc;$('spd').style.setProperty('--zc',zc)}
   const rem=Math.max(0,S.total-S.s),big=Math.round(S.total*LY_PER_KM)>=100000;
   if(cache.big!==big){cache.big=big;$('dstGh').textContent=big?'888,888':'88,888'}
@@ -581,7 +600,7 @@ function hud(){
   setTxt('enPct',Math.round(en)+'%');
   enSeg.forEach((e,i)=>{const c=i<ne?('on'+(en<25?' rd':en<50?' am':'')):'';if(e.className!==c)e.className=c});
   const u=S.turn?clamp(S.turn.t/S.turn.dur,0,1):0;
-  setTxt('gVal',(1+.06*Math.sin(S.t*2.3)*S.w+(S.turn?.42*Math.sin(Math.PI*u):0)).toFixed(2)+' G');
+  setTxt('gVal',(1+.06*Math.sin(S.t*2.3)*S.w+(S.turn?.42*Math.sin(Math.PI*u):0)).toFixed(2)+'G');
   $('i1').className=Math.sin(S.t*7)>.95?'a':'g';
   $('i2').className=S.w>.5?'c':'';
   $('i3').className=(S.turn?'a f':'a')+(S.arrived?' f':'');
@@ -645,9 +664,9 @@ async function getJSON(u){const r=await fetch(u);if(!r.ok)throw new Error('HTTP 
 function getPos(){return new Promise((ok,ng)=>{if(!navigator.geolocation)return ng(new Error('GPS 미지원'));navigator.geolocation.getCurrentPosition(ok,ng,{enableHighAccuracy:true,timeout:15000})})}
 function hav(a,b){const R=6371,r=Math.PI/180,dl=(b[1]-a[1])*r,dn=(b[0]-a[0])*r,x=Math.sin(dl/2)**2+Math.cos(a[1]*r)*Math.cos(b[1]*r)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
 function buildPoly(c){const cum=[0];for(let i=1;i<c.length;i++)cum[i]=cum[i-1]+hav(c[i-1],c[i]);return{c,cum,total:cum[cum.length-1]}}
-function projectOn(p,lat,lon,from){
+function projectOn(p,lat,lon,from,span){
   const kx=111.32*Math.cos(lat*Math.PI/180),ky=110.57;let best=1e9,bs=0,bi=from;
-  const end=Math.min(p.c.length-1,from+160);
+  const end=Math.min(p.c.length-1,from+(span||160));
   for(let i=Math.max(0,from-3);i<end;i++){
     const a=p.c[i],b=p.c[i+1],ax=(a[0]-lon)*kx,ay=(a[1]-lat)*ky,bx=(b[0]-lon)*kx,by=(b[1]-lat)*ky,dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;
     const t=l2?clamp(-(ax*dx+ay*dy)/l2,0,1):0,d=Math.hypot(ax+dx*t,ay+dy*t);
@@ -663,7 +682,7 @@ function mapManeuver(m){
   if(!x)return(m.type==='roundabout'||m.type==='rotary'||m.type==='fork'||m.type==='off ramp'||m.type==='on ramp')?{type:'WP',ang:0}:null;
   return{type:x[0],ang:x[1]};
 }
-async function buildRealRoute(lat,lon){
+async function buildRealRoute(lat,lon,keep){
   const d=S.dest;
   const j=await getJSON(`https://router.project-osrm.org/route/v1/driving/${lon},${lat};${d.lon},${d.lat}?overview=full&geometries=geojson&steps=true`);
   if(!j.routes||!j.routes.length)throw new Error('경로를 찾지 못했습니다');
@@ -676,51 +695,124 @@ async function buildRealRoute(lat,lon){
   for(let k=0;k<ms.length;k++){const prev=k?ms[k-1].at:0;if(ms[k].at-prev>10){ms.splice(k,0,{at:prev+(ms[k].at-prev)/2,type:'WP',ang:0,label:''});k++}}
   assignBodies(ms,d.name,Date.now()&0xffffff);
   S.poly=poly;S.pidx=0;
+  const keepState=keep?{v:S.v,w:S.w,warpOn:S.warpOn}:null;   // 재탐색 때는 속도·워프 상태를 유지
   initTrip('gps',ms,poly.total);
+  if(keepState){S.v=keepState.v;S.w=keepState.w;S.warpOn=keepState.warpOn}
 }
+
+/* ---- 중앙 메시지 ---- */
+let toastTimer=null;
+function showToast(kind,title,sub,ms){
+  const el=$('toast');clearTimeout(toastTimer);
+  el.className='show '+kind;$('toastT').textContent=title;$('toastS').textContent=sub||'';
+  if(ms)toastTimer=setTimeout(hideToast,ms);
+}
+function showLostToast(){showToast('warn blink','GPS 신호 소실','SIGNAL LOST · 추측 항법으로 진행 중',0)}
+function hideToast(){
+  clearTimeout(toastTimer);
+  if(S.sigLost&&S.mode==='gps'){showLostToast();return}   // 신호가 아직 없으면 소실 메시지를 유지
+  $('toast').classList.remove('show');
+}
+
+/* ---- GPS 수신 감시 ---- */
+function markLost(){
+  if(S.mode!=='gps'||S.arrived||S.sigLost)return;
+  S.sigLost=true;showLostToast();beep(300,.2,.06);
+}
+function checkSignal(){   // 1초마다: 주행 중(10km/h 초과)인데 8초 넘게 수신이 없으면 신호 소실
+  if(S.mode!=='gps'||S.arrived||S.sigLost||!S.lastFixAt)return;
+  if(Date.now()-S.lastFixAt>8000&&S.v>10)markLost();
+}
+setInterval(checkSignal,1000);
+
 let watchId=null,lastFix=null;
 function startWatch(){
   if(watchId!=null)navigator.geolocation.clearWatch(watchId);
-  watchId=navigator.geolocation.watchPosition(onFix,()=>{},{enableHighAccuracy:true,maximumAge:1000});
+  S.lastFixAt=Date.now();S.sigLost=false;
+  watchId=navigator.geolocation.watchPosition(onFix,err=>{
+    if(S.mode!=='gps')return;
+    if(err&&err.code===1){showToast('bad','위치 권한 거부','PERMISSION DENIED · 브라우저 설정에서 허용해 주세요',4000);return}
+    if(S.v>10)markLost();
+  },{enableHighAccuracy:true,maximumAge:1000,timeout:15000});
 }
 async function onFix(p){
-  if(S.mode!=='gps'||S.arrived||S.rerouting)return;
-  const lat=p.coords.latitude,lon=p.coords.longitude,now=Date.now();
+  if(S.mode!=='gps')return;
+  const acc=p.coords.accuracy||0,now=Date.now();
+  if(acc>150)return;   // 정확도 불량(터널 입구·고층 건물 사이 등)은 신호 없음으로 취급
+  const gap=S.lastFixAt?now-S.lastFixAt:0;S.lastFixAt=now;
+  if(S.sigLost){S.sigLost=false;showToast('ok','GPS 신호 재수신','SIGNAL REACQUIRED · 위치 재동기화',2500);beep(880,.08)}
+  if(S.arrived||S.rerouting)return;
+  const lat=p.coords.latitude,lon=p.coords.longitude;
   let v=p.coords.speed!=null?p.coords.speed*3.6:(lastFix?hav([lastFix.lon,lastFix.lat],[lon,lat])/Math.max(.5,(now-lastFix.t)/1000)*3600:0);
   lastFix={lat,lon,t:now};S.v+=(v-S.v)*.6;
-  const pr=projectOn(S.poly,lat,lon,S.pidx);
-  if(pr.dist>.08&&now-S.lastRe>20000){
+  // 오래 끊겼다가 다시 받으면 경로 전체(남은 구간)에서 위치를 찾는다
+  const pr=projectOn(S.poly,lat,lon,S.pidx,gap>4000?1e9:160);
+  if(pr.dist>Math.max(.08,acc/1000*1.5)&&now-S.lastRe>20000){
     S.lastRe=now;S.rerouting=true;
-    try{await buildRealRoute(lat,lon)}catch(e){}
+    showToast('warn blink','항로 이탈','OFF COURSE · 재탐색 중…',0);beep(500,.1,.06);
+    try{
+      await buildRealRoute(lat,lon,true);
+      showToast('warn','항로 변경','COURSE CHANGE · 경로를 재설정했습니다',3000);beep(740,.1,.06);
+    }catch(e){
+      showToast('bad','항로 재설정 실패','REROUTE FAILED · 잠시 후 다시 시도합니다',3000);
+    }
     S.rerouting=false;return;
   }
   S.pidx=pr.i;
   const diff=pr.s-S.s;S.s=Math.abs(diff)>.15?pr.s:S.s+diff*.5;
 }
+
+/* ---- 목적지 기록 (이 기기 브라우저에만 저장) ---- */
+const HKEY='warpnav.history',HMAX=5;
+function loadHist(){
+  try{const a=JSON.parse(localStorage.getItem(HKEY)||'[]');return Array.isArray(a)?a.filter(x=>x&&typeof x.n==='string'&&typeof x.t==='number').sort((x,y)=>y.t-x.t).slice(0,HMAX):[]}catch(e){return[]}
+}
+function saveHist(name,t){
+  try{let a=loadHist().filter(x=>x.n!==name);a.unshift({n:name,t});a.sort((x,y)=>y.t-x.t);localStorage.setItem(HKEY,JSON.stringify(a.slice(0,HMAX)))}catch(e){}
+}
+const p2=n=>String(n).padStart(2,'0');
+const fmtDT=t=>{const d=new Date(t);return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`};
+function renderHist(){
+  const box=$('hist');box.textContent='';const a=loadHist();
+  if(!a.length){const s=document.createElement('div');s.className='none';s.textContent='아직 기록이 없습니다';box.appendChild(s);return}
+  a.forEach(x=>{
+    const b=document.createElement('button');b.type='button';
+    const n=document.createElement('span');n.className='n';n.textContent=x.n;
+    const d=document.createElement('span');d.className='d';d.textContent=fmtDT(x.t);
+    b.appendChild(n);b.appendChild(d);
+    b.onclick=()=>{$('dest').value=x.n;$('dest').focus()};
+    box.appendChild(b);
+  });
+}
+renderHist();
+
 async function engageGPS(){
   const q=$('dest').value.trim();if(!q){setStatus('목적지를 입력하세요',1);return}
+  const t0=Date.now();
   try{
     setStatus('현재 위치 수신 중…');const p=await getPos();
     setStatus('목적지 좌표 탐색 중…');
     const g=await getJSON(`https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=ko&q=${encodeURIComponent(q)}`);
     if(!g.length)throw new Error('목적지를 찾지 못했습니다');
     S.dest={lat:+g[0].lat,lon:+g[0].lon,name:q};
+    saveHist(q,t0);renderHist();   // 목적지를 찾은 경우에만 기록
     setStatus('항로 계산 중…');
-    await buildRealRoute(p.coords.latitude,p.coords.longitude);
-    S.lastRe=Date.now();startWatch();audioInit();$('ov').classList.add('hide');setStatus('');
+    await buildRealRoute(p.coords.latitude,p.coords.longitude,false);
+    S.lastRe=Date.now();startWatch();audioInit();hideToast();$('ov').classList.add('hide');setStatus('');
     $('bTs').textContent='×1';$('bPause').textContent='PAUSE';
   }catch(e){
-    setStatus('실패: '+(e&&e.message?e.message:'알 수 없는 오류')+' — 이 미리보기 화면에서는 GPS·외부 통신이 막힐 수 있습니다. HTTPS로 직접 호스팅하면 동작합니다. 시뮬레이션 탭은 그대로 사용할 수 있습니다.',1);
+    setStatus('실패: '+(e&&e.message?e.message:'알 수 없는 오류')+' — 네트워크와 위치 권한을 확인해 주세요. 시뮬레이션 탭은 그대로 사용할 수 있습니다.',1);
   }
 }
 
 /* ---------------- UI ---------------- */
 function tab(sim){$('tSim').classList.toggle('act',sim);$('tGps').classList.toggle('act',!sim);$('pSim').classList.toggle('on',sim);$('pGps').classList.toggle('on',!sim)}
-$('tSim').onclick=()=>tab(true);$('tGps').onclick=()=>tab(false);
+$('tSim').onclick=()=>tab(true);$('tGps').onclick=()=>{tab(false);renderHist()};
 $('goSim').onclick=()=>{
   const km=clamp(parseFloat($('inKm').value)||25,3,300);S.ts=parseInt($('inTs').value,10)||10;
   if(watchId!=null){navigator.geolocation.clearWatch(watchId);watchId=null}
   audioInit();if(AC&&AC.state==='suspended')AC.resume();
+  S.sigLost=false;hideToast();
   initTrip('sim',genRoute(km),km);$('bTs').textContent='×'+S.ts;$('bPause').textContent='PAUSE';$('ov').classList.add('hide');
 };
 $('goGps').onclick=()=>{audioInit();if(AC&&AC.state==='suspended')AC.resume();engageGPS()};
