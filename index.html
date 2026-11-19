@@ -78,7 +78,31 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .dial{flex:none;width:50px;text-align:center;padding-bottom:2px}
 .dial svg{width:50px;height:50px;display:block}
 .dial b{font:17px 'VT323',monospace;font-weight:400;color:var(--amb);text-shadow:0 0 6px #ffb21c88}
-#sg{display:block;width:100%;height:74px;margin-top:2px}
+#sg{display:block;flex:1 1 0;min-width:0;height:80px}
+.sgrow{display:flex;align-items:flex-end;gap:8px;margin-top:2px}
+.ctl{margin-top:6px!important}
+/* 안내 종료 (비상정지형) 버튼 */
+#bStop{display:none;flex:none;position:relative;width:64px;height:64px;margin:0 0 14px;padding:0;border:0;border-radius:50%;cursor:pointer;
+  background:repeating-conic-gradient(#ffcc1c 0 15deg,#111 15deg 30deg);box-shadow:0 0 0 2px #000,0 2px 8px #000}
+#bStop.on{display:block}
+#bStop i{position:absolute;inset:7px;border-radius:50%;border:2px solid #5a0a06;
+  background:radial-gradient(circle at 36% 30%,#ff9d90 0,#ff3b2e 30%,#c01610 65%,#7a0a06 100%);box-shadow:inset 0 -3px 5px rgba(0,0,0,.45),0 2px 4px #000}
+#bStop b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 13px 'Nanum Gothic Coding',monospace;color:#fff;text-shadow:0 1px 2px #000;letter-spacing:.02em;pointer-events:none}
+#bStop:active i{inset:9px;box-shadow:inset 0 2px 5px rgba(0,0,0,.6)}
+#bStop.arm{animation:bl .5s steps(2) infinite}
+/* 스로틀 레버 (시뮬레이션) */
+#thr{position:absolute;left:8px;top:176px;bottom:222px;width:54px;display:none;flex-direction:column;align-items:center;gap:5px;pointer-events:none}
+#thr.on{display:flex}
+#thr .tl{font:15px 'VT323',monospace;color:var(--lab);text-shadow:0 1px 3px #000;line-height:1}
+#thrV{font:22px 'VT323',monospace;color:var(--fg);text-shadow:var(--tsh);line-height:1}
+#thrTrk{flex:1;min-height:60px;position:relative;width:30px;touch-action:none;cursor:pointer;pointer-events:auto;background:rgba(2,12,10,.55);border:1px solid var(--line)}
+#thrTrk .zs{position:absolute;left:2px;top:6px;bottom:6px;width:4px;background:linear-gradient(to top,#4de8ff 0 21.4%,#6dff9c 21.4% 42.9%,#ffb21c 42.9% 71.4%,#ff4136 71.4% 100%);opacity:.85}
+#thrTrk .slot{position:absolute;left:14px;top:6px;bottom:6px;width:6px;background:#010605;border:1px solid #1f5a4e}
+#thrH{position:absolute;left:-7px;right:-7px;top:0;height:26px;border-radius:3px;border:2px solid #101010;
+  background:linear-gradient(#f0f0f0,#a8a8a8 45%,#5c5c5c);box-shadow:0 2px 5px #000}
+#thrH:after{content:"";position:absolute;left:4px;right:4px;top:50%;height:3px;margin-top:-1px;background:#c01610}
+#thr .bt{flex:none;width:54px;height:30px;font-size:17px;padding:0;background:rgba(0,0,0,.45);color:var(--lab);border:1px solid rgba(23,70,61,.9)}
+#thr .bt.act{background:rgba(125,255,216,.9);color:#021}
 .ctl{display:flex;gap:8px;margin-top:3px}
 .bt{flex:1;font:19px 'VT323',monospace;letter-spacing:.06em;background:#04120f;color:var(--fg);border:2px solid var(--line);padding:3px 4px;cursor:pointer}
 .bt:active,.bt.act{background:var(--fg);color:#021}
@@ -122,8 +146,8 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .fld input,.fld select{width:100%;font:15px 'Nanum Gothic Coding',monospace;background:#020c0a;color:var(--fg);border:2px solid var(--line);padding:7px 8px;outline:none;border-radius:0}
 .fld input:focus,.fld select:focus{border-color:var(--fg)}
 .go{width:100%;margin-top:8px;font-size:24px;padding:6px;background:var(--fg);color:#021;border-color:var(--fg)}
-#gpsStatus{font-size:12px;color:var(--lab);margin-top:8px;line-height:1.5;min-height:18px}
-#gpsStatus.err{color:var(--amb)}
+#gpsStatus,#simStatus{font-size:12px;color:var(--lab);margin-top:8px;line-height:1.5;min-height:18px}
+#gpsStatus.err,#simStatus.err{color:var(--amb)}
 .hint{font-size:11px;color:#2c7a6a;margin-top:10px;line-height:1.5}
 .pane{display:none}.pane.on{display:block}
 </style>
@@ -155,6 +179,12 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
         </div>
       </div>
       <div id="then"><span class="tg">THEN</span><svg id="thenSvg" viewBox="0 0 100 100" shape-rendering="crispEdges"></svg><span id="thenTx"></span></div>
+    </div>
+
+    <div id="thr">
+      <div class="tl">THR</div><div id="thrV">000</div>
+      <div id="thrTrk"><div class="zs"></div><div class="slot"></div><div id="thrH"></div></div>
+      <button class="bt act" id="bAuto" type="button">AUTO</button>
     </div>
 
     <div id="route">
@@ -200,7 +230,10 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
           <b id="hdg">000°</b>
         </div>
       </div>
-      <canvas id="sg"></canvas>
+      <div class="sgrow">
+        <canvas id="sg"></canvas>
+        <button id="bStop" type="button" aria-label="안내 종료"><i></i><b>종료</b></button>
+      </div>
       <div class="ctl">
         <button class="bt" id="bSetup">SETUP</button>
         <button class="bt" id="bPause">PAUSE</button>
@@ -218,10 +251,20 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
     <div class="tabs"><button class="bt act" id="tSim">SIM 시뮬레이션</button><button class="bt" id="tGps">GPS 실주행</button></div>
 
     <div class="pane on" id="pSim">
-      <div class="fld"><label>총 항로 길이 (km)</label><input id="inKm" type="number" min="3" max="300" value="25"></div>
+      <div class="fld"><label>경로 종류</label><div class="tabs" style="margin:0"><button class="bt act" id="mRand" type="button">임의 경로</button><button class="bt" id="mDest" type="button">목적지 지정</button></div></div>
+      <div id="sRand"><div class="fld"><label>총 항로 길이 (km)</label><input id="inKm" type="number" min="3" max="300" value="25"></div></div>
+      <div id="sDest" style="display:none">
+        <div class="fld"><label>출발지 (비우면 현재 위치)</label><div class="srow"><input id="sorg" type="text" placeholder="비우면 현재 위치" enterkeyhint="search" autocomplete="off"><button class="bt" id="bFindO" type="button">검색</button></div></div>
+        <div class="fld" id="sorgFld" style="display:none"><label id="sorgLb"></label><div class="hist cand" id="sorgList"></div></div>
+        <div class="fld"><label>목적지 (주소 또는 장소명)</label><div class="srow"><input id="sdest" type="text" placeholder="예: 서울역" enterkeyhint="search" autocomplete="off"><button class="bt" id="bFindD" type="button">검색</button></div></div>
+        <div class="fld" id="sdestFld" style="display:none"><label id="sdestLb"></label><div class="hist cand" id="sdestList"></div></div>
+        <div class="fld"><label>최근 목적지 (누르면 선택됩니다)</label><div class="hist" id="shist"></div></div>
+      </div>
       <div class="fld"><label>시간 배율 (10 = 25분 주행을 약 2분 30초에 감상)</label>
         <select id="inTs"><option value="1">×1 (실시간)</option><option value="5">×5</option><option value="10" selected>×10</option><option value="20">×20</option></select></div>
       <button class="bt go" id="goSim">ENGAGE ▶</button>
+      <div id="simStatus"></div>
+      <p class="hint">시뮬레이션에서는 스로틀 레버로 속도를 직접 조작하거나 AUTO로 자동 진행할 수 있습니다. 목적지를 지정하면 외부 지도 서버(OSRM·Nominatim)에서 실제 경로를 받아옵니다.</p>
     </div>
 
     <div class="pane" id="pGps">
@@ -247,7 +290,7 @@ const LY_PER_KM=1000;  // 1 km = 1,000 광년
 /* ---------------- 상태 ---------------- */
 const S={mode:'idle',running:false,t:0,s:0,v:0,vAvg:50,total:0,maneuvers:[],idx:0,ts:10,
   w:1,warpOn:true,phi:0,turn:null,arrived:false,arrM:null,flash:0,side:1,cruise:60,snd:false,
-  traffic:null,sigLost:false,lastFixAt:0,dest:null,poly:null,pidx:0,rerouting:false,lastRe:0,waiting:false,busy:false,retryAt:0,neHue:220};
+  traffic:null,sigLost:false,lastFixAt:0,dest:null,poly:null,pidx:0,rerouting:false,lastRe:0,waiting:false,busy:false,retryAt:0,manual:false,thr:0,neHue:220};
 
 /* ---------------- 천체 ---------------- */
 const BODIES=[['케플러-442b','ocean'],['프록시마 b','rock'],['알파 센타우리 A','star'],['시리우스 B','star'],
@@ -300,7 +343,7 @@ function genTraffic(total){
   return a;
 }
 function initTrip(mode,ms,total){
-  S.waiting=false;S.mode=mode;S.maneuvers=ms;S.total=total;S.s=0;S.idx=0;S.turn=null;S.arrived=false;S.arrM=null;
+  S.waiting=false;S.manual=false;S.thr=0;S.mode=mode;S.maneuvers=ms;S.total=total;S.s=0;S.idx=0;S.turn=null;S.arrived=false;S.arrM=null;
   S.v=0;S.warpOn=false;S.w=Math.min(S.w,.3);S.cruise=60;S.vAvg=50;S.running=(mode==='sim');S.traffic=(mode==='sim')?genTraffic(total):null;
   $('dstGh').textContent=(Math.round(total*LY_PER_KM)>=100000)?'888,888':'88,888';
   $('lpArr').classList.remove('on');
@@ -315,7 +358,8 @@ function stepSim(dt){
     if(d<.45)vt=Math.min(vt,18+d*40);
     if(m.type==='ARR')vt=Math.min(vt,Math.max(3,d*60));
   }
-  S.v+=clamp(vt-S.v,-14*simDt,9*simDt);
+  if(S.manual){vt=S.thr*VMAX;S.v+=clamp(vt-S.v,-28*simDt,20*simDt)}   // 스로틀 수동 조작
+  else S.v+=clamp(vt-S.v,-14*simDt,9*simDt);
   S.s+=S.v/3600*simDt;
   if(m&&m.type==='ARR'&&d<.012)S.s=m.at;
   if(S.s>S.total)S.s=S.total;
@@ -324,7 +368,7 @@ function stepSim(dt){
 /* ---------------- 기동 ---------------- */
 function startTurn(m){
   m.done=true;
-  if(m.type==='ARR'){S.arrived=true;S.arrM=m;S.running=false;S.v=0;S.flash=.6;beep(1040,.25,.07);setTimeout(()=>beep(1320,.35,.07),220);return}
+  if(m.type==='ARR'){wakeOff();S.arrived=true;S.arrM=m;S.running=false;S.v=0;S.flash=.6;beep(1040,.25,.07);setTimeout(()=>beep(1320,.35,.07),220);return}
   const ang=m.type==='WP'?0:m.ang;
   const dir=m.type==='WP'?(S.side=-S.side):(Math.sign(ang)||1);
   S.turn={m,t:0,dur:1.7+Math.abs(ang)/90*.8,phi0:S.phi,rad:ang*Math.PI/180,dir};
@@ -505,7 +549,7 @@ const rg=$('rg'),rgx=rg.getContext('2d'),sg=$('sg'),sgx=sg.getContext('2d'),gw=$
 let RW=64,RH=400,SW=300,SH=74,GW=100,GH=22;
 function sizeCv(c,x,cb){const r=c.getBoundingClientRect();c.width=Math.max(1,Math.round(r.width*dpr));c.height=Math.max(1,Math.round(r.height*dpr));x.setTransform(dpr,0,0,dpr,0,0);cb(r.width,r.height)}
 function resizeHud(){sizeCv(rg,rgx,(w,h)=>{RW=w;RH=h});sizeCv(sg,sgx,(w,h)=>{SW=w;SH=h});sizeCv(gw,gwx,(w,h)=>{GW=w;GH=h})}
-new ResizeObserver(resizeHud).observe($('hud'));resizeHud();
+new ResizeObserver(resizeHud).observe($('hud'));new ResizeObserver(resizeHud).observe($('sg'));resizeHud();
 
 const mkBar=(id,n)=>{const e=$(id);for(let i=0;i<n;i++)e.appendChild(document.createElement('i'))};
 mkBar('enBar',16);const enSeg=[...$('enBar').children];
@@ -522,7 +566,7 @@ const ZC=v=>v<30?'#4de8ff':v<60?'#6dff9c':v<100?'#ffb21c':'#ff4136';   // 30 / 6
 const envH=t=>.3+.7*(.5-.5*Math.cos(Math.PI*Math.pow(t,1.15)));
 function drawSpeed(){
   const x=sgx;x.clearRect(0,0,SW,SH);
-  const pl=6,bw=SW-pl*2,base=SH-17,mh=base-6,step=bw/NB;
+  const pl=6,bw=SW-pl*2,base=SH-23,mh=base-6,step=bw/NB;
   x.strokeStyle='rgba(125,255,216,.3)';x.lineWidth=1.5;x.beginPath();x.moveTo(pl-3,base+3);
   for(let k=0;k<=40;k++){const t=k/40;x.lineTo(pl+t*bw,base-envH(t)*mh-4)}
   x.lineTo(pl+bw+3,base+3);x.closePath();x.stroke();
@@ -646,6 +690,9 @@ function hud(){
     $('then').style.visibility='visible';
   }else $('then').style.visibility='hidden';
 
+  const stopOn=S.mode!=='idle';
+  if(cache.stopOn!==stopOn){cache.stopOn=stopOn;$('bStop').classList.toggle('on',stopOn);resizeHud()}
+  thrUpdate();
   drawSpeed();drawRoute();drawScope();
 }
 
@@ -677,7 +724,7 @@ function beep(f,dur,vol){
 }
 
 /* ---------------- GPS 실주행 ---------------- */
-function setStatus(t,err){const e=$('gpsStatus');e.textContent=t;e.className=err?'err':''}
+function setStatus(t,err,id){const e=$(id||'gpsStatus');e.textContent=t;e.className=err?'err':''}
 async function getJSON(u){const r=await fetch(u);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
 function getPos(ms){return new Promise((ok,ng)=>{if(!navigator.geolocation)return ng(new Error('GPS 미지원'));navigator.geolocation.getCurrentPosition(ok,ng,{enableHighAccuracy:true,maximumAge:5000,timeout:ms||15000})})}
 function hav(a,b){const R=6371,r=Math.PI/180,dl=(b[1]-a[1])*r,dn=(b[0]-a[0])*r,x=Math.sin(dl/2)**2+Math.cos(a[1]*r)*Math.cos(b[1]*r)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
@@ -700,7 +747,7 @@ function mapManeuver(m){
   if(!x)return(m.type==='roundabout'||m.type==='rotary'||m.type==='fork'||m.type==='off ramp'||m.type==='on ramp')?{type:'WP',ang:0}:null;
   return{type:x[0],ang:x[1]};
 }
-async function buildRealRoute(lat,lon,keep){
+async function buildRealRoute(lat,lon,keep,mode){
   const d=S.dest;
   const j=await getJSON(`https://router.project-osrm.org/route/v1/driving/${lon},${lat};${d.lon},${d.lat}?overview=full&geometries=geojson&steps=true`);
   if(!j.routes||!j.routes.length)throw new Error('경로를 찾지 못했습니다');
@@ -714,7 +761,7 @@ async function buildRealRoute(lat,lon,keep){
   assignBodies(ms,d.name,Date.now()&0xffffff);
   S.poly=poly;S.pidx=0;
   const keepState=keep?{v:S.v,w:S.w,warpOn:S.warpOn}:null;   // 재탐색 때는 속도·워프 상태를 유지
-  initTrip('gps',ms,poly.total);
+  initTrip(mode||'gps',ms,poly.total);
   if(keepState){S.v=keepState.v;S.w=keepState.w;S.warpOn=keepState.warpOn}
 }
 
@@ -803,71 +850,114 @@ function saveHist(name,t,lat,lon){
 }
 const p2=n=>String(n).padStart(2,'0');
 const fmtDT=t=>{const d=new Date(t);return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`};
-function renderHist(){
-  const box=$('hist');box.textContent='';const a=loadHist();
+function fillHist(boxId,P){
+  const box=$(boxId);box.textContent='';const a=loadHist();
   if(!a.length){const s=document.createElement('div');s.className='none';s.textContent='아직 기록이 없습니다';box.appendChild(s);return}
   a.forEach(x=>{
     const b=document.createElement('button');b.type='button';
     const n=document.createElement('span');n.className='n';n.textContent=x.n;
     const d=document.createElement('span');d.className='d';d.textContent=fmtDT(x.t);
     b.appendChild(n);b.appendChild(d);
-    b.onclick=()=>{
-      $('dest').value=x.n;
-      if(typeof x.lat==='number'&&typeof x.lon==='number'){chosen={name:x.n,lat:x.lat,lon:x.lon};showCands([],true);setStatus('이전 목적지를 선택했습니다. 다른 후보를 보려면 [검색]을 누르세요.')}
-      else{chosen=null;$('dest').focus()}
-    };
+    b.onclick=()=>P.fill(x);
     box.appendChild(b);
   });
 }
-renderHist();
-
-/* ---- 목적지 검색 · 후보 선택 ---- */
-let chosen=null,finding=false;   // chosen: {name,lat,lon}
-const shortName=r=>((r.name&&r.name.trim())||String(r.display_name||'').split(',')[0]).trim();
-function showCands(list,hide){
-  const box=$('cand');box.textContent='';$('candFld').style.display=hide||!list.length?'none':'block';
-  list.forEach(c=>{
-    const b=document.createElement('button');b.type='button';
-    const n=document.createElement('span');n.className='n';n.textContent=c.name;
-    const a=document.createElement('span');a.className='a';a.textContent=c.sub;
-    b.appendChild(n);b.appendChild(a);
-    b.onclick=()=>{
-      chosen={name:c.name,lat:c.lat,lon:c.lon};$('dest').value=c.name;
-      box.querySelectorAll('button').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');
-      setStatus('목적지를 선택했습니다. GPS LOCK & ENGAGE를 누르세요.');
-    };
-    box.appendChild(b);
-  });
-}
-async function doSearch(){
-  const q=$('dest').value.trim();if(!q){setStatus('목적지를 입력하세요',1);return false}
-  if(finding)return false;finding=true;chosen=null;
+/* ---- 화면 꺼짐 방지 (안내 중) ---- */
+let wakeLock=null,wakeVid=null,wakeWanted=false;
+function wakeFallback(){   // Wake Lock 미지원 브라우저용: 보이지 않는 영상을 재생해 화면 꺼짐을 막는다
   try{
-    setStatus('목적지 검색 중…');
-    const g=await getJSON(`https://nominatim.openstreetmap.org/search?format=json&limit=7&accept-language=ko&q=${encodeURIComponent(q)}`);
-    const seen=new Set(),list=[];
-    g.forEach(r=>{
-      const name=shortName(r),k=name+'|'+(+r.lat).toFixed(3)+'|'+(+r.lon).toFixed(3);if(seen.has(k))return;seen.add(k);
-      const sub=String(r.display_name||'').split(',').slice(1,4).map(x=>x.trim()).filter(x=>x&&!/^\d+$/.test(x)).join(', ');
-      list.push({name,sub:sub||'-',lat:+r.lat,lon:+r.lon});
-    });
-    if(!list.length){showCands([],true);setStatus('검색 결과가 없습니다. 다른 이름이나 주소(시·구 포함)로 시도해 보세요.',1);return false}
-    $('candLb').textContent=`검색 결과 ${list.length}건 (눌러서 선택)`;showCands(list);
-    setStatus('목적지 후보를 눌러 선택한 뒤 GPS LOCK & ENGAGE를 누르세요.');return true;
-  }catch(e){
-    setStatus('검색 실패: '+(e&&e.message?e.message:'알 수 없는 오류')+' — 네트워크를 확인해 주세요.',1);return false;
-  }finally{finding=false}
+    if(!wakeVid){
+      const c=document.createElement('canvas');c.width=c.height=16;const g=c.getContext('2d');let k=0;
+      setInterval(()=>{g.fillStyle=(k++&1)?'#000':'#010101';g.fillRect(0,0,16,16)},500);
+      const v=document.createElement('video');v.muted=true;v.loop=true;v.setAttribute('playsinline','');v.setAttribute('muted','');
+      v.style.cssText='position:fixed;left:0;top:0;width:2px;height:2px;opacity:.02;pointer-events:none;z-index:-1';
+      v.srcObject=c.captureStream(2);document.body.appendChild(v);wakeVid=v;
+    }
+    const pr=wakeVid.play();if(pr&&pr.catch)pr.catch(()=>{});
+  }catch(e){}
 }
-$('bFind').onclick=doSearch;
-$('dest').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();doSearch()}});
-$('dest').addEventListener('input',()=>{if(chosen&&$('dest').value.trim()!==chosen.name){chosen=null;$('cand').querySelectorAll('button.sel').forEach(x=>x.classList.remove('sel'))}});
+async function wakeOn(){
+  wakeWanted=true;
+  try{
+    if('wakeLock' in navigator){
+      if(!wakeLock||wakeLock.released){
+        wakeLock=await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release',()=>{wakeLock=null});
+      }
+      return;
+    }
+  }catch(e){ if(document.visibilityState!=='visible')return }   // 화면이 숨겨진 상태의 실패는 복귀 시 재시도
+  wakeFallback();
+}
+function wakeOff(){
+  wakeWanted=false;
+  try{if(wakeLock){wakeLock.release();wakeLock=null}}catch(e){}
+  try{if(wakeVid)wakeVid.pause()}catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&wakeWanted&&S.mode!=='idle'&&!S.arrived)wakeOn()});
+
+/* ---- 목적지 검색 · 후보 선택 (GPS·시뮬레이션 공용) ---- */
+const shortName=r=>((r.name&&r.name.trim())||String(r.display_name||'').split(',')[0]).trim();
+function makePicker(o){
+  const P={chosen:null,finding:false},inp=$(o.inp),box=$(o.list),fld=$(o.fld),lb=$(o.lb),st=(t,e)=>setStatus(t,e,o.st);
+  P.inp=inp;
+  P.show=(items,hide)=>{
+    box.textContent='';fld.style.display=hide||!items.length?'none':'block';
+    items.forEach(c=>{
+      const b=document.createElement('button');b.type='button';
+      const n=document.createElement('span');n.className='n';n.textContent=c.name;
+      const a=document.createElement('span');a.className='a';a.textContent=c.sub;
+      b.appendChild(n);b.appendChild(a);
+      b.onclick=()=>{
+        P.chosen={name:c.name,lat:c.lat,lon:c.lon};inp.value=c.name;
+        box.querySelectorAll('button').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');
+        st('선택했습니다.'+(o.next?' '+o.next:''));
+      };
+      box.appendChild(b);
+    });
+  };
+  P.fill=x=>{   // 최근 목적지 항목을 눌렀을 때
+    inp.value=x.n;
+    if(typeof x.lat==='number'&&typeof x.lon==='number'){P.chosen={name:x.n,lat:x.lat,lon:x.lon};P.show([],true);st('이전 목적지를 선택했습니다. 다른 후보를 보려면 [검색]을 누르세요.')}
+    else{P.chosen=null;inp.focus()}
+  };
+  P.search=async()=>{
+    const q=inp.value.trim();if(!q){st('입력칸을 채워 주세요',1);return false}
+    if(P.finding)return false;P.finding=true;P.chosen=null;
+    try{
+      st('검색 중…');
+      const g=await getJSON(`https://nominatim.openstreetmap.org/search?format=json&limit=7&accept-language=ko&q=${encodeURIComponent(q)}`);
+      const seen=new Set(),list=[];
+      g.forEach(r=>{
+        const name=shortName(r),k=name+'|'+(+r.lat).toFixed(3)+'|'+(+r.lon).toFixed(3);if(seen.has(k))return;seen.add(k);
+        const sub=String(r.display_name||'').split(',').slice(1,4).map(x=>x.trim()).filter(x=>x&&!/^\d+$/.test(x)).join(', ');
+        list.push({name,sub:sub||'-',lat:+r.lat,lon:+r.lon});
+      });
+      if(!list.length){P.show([],true);st('검색 결과가 없습니다. 다른 이름이나 주소(시·구 포함)로 시도해 보세요.',1);return false}
+      lb.textContent=`검색 결과 ${list.length}건 (눌러서 선택)`;P.show(list);
+      st('후보를 눌러 선택하세요.'+(o.next?' '+o.next:''));return true;
+    }catch(e){
+      st('검색 실패: '+(e&&e.message?e.message:'알 수 없는 오류')+' — 네트워크를 확인해 주세요.',1);return false;
+    }finally{P.finding=false}
+  };
+  $(o.btn).onclick=P.search;
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();P.search()}});
+  inp.addEventListener('input',()=>{if(P.chosen&&inp.value.trim()!==P.chosen.name){P.chosen=null;box.querySelectorAll('button.sel').forEach(x=>x.classList.remove('sel'))}});
+  return P;
+}
+const PG=makePicker({inp:'dest',btn:'bFind',fld:'candFld',list:'cand',lb:'candLb',st:'gpsStatus',next:'GPS LOCK & ENGAGE를 누르세요.'});
+const PSD=makePicker({inp:'sdest',btn:'bFindD',fld:'sdestFld',list:'sdestList',lb:'sdestLb',st:'simStatus',next:'ENGAGE를 누르세요.'});
+const PSO=makePicker({inp:'sorg',btn:'bFindO',fld:'sorgFld',list:'sorgList',lb:'sorgLb',st:'simStatus'});
+function renderHist(){fillHist('hist',PG);fillHist('shist',PSD)}
+renderHist();
 
 async function engageGPS(){
   const q=$('dest').value.trim();if(!q){setStatus('목적지를 입력하세요',1);return}
-  if(!chosen||chosen.name!==q){await doSearch();return}   // 선택 전이면 후보부터 보여준다
+  const ch=PG.chosen;
+  if(!ch||ch.name!==q){await PG.search();return}   // 선택 전이면 후보부터 보여준다
   const t0=Date.now();
-  S.dest={lat:chosen.lat,lon:chosen.lon,name:chosen.name};
-  saveHist(chosen.name,t0,chosen.lat,chosen.lon);renderHist();
+  S.dest={lat:ch.lat,lon:ch.lon,name:ch.name};
+  saveHist(ch.name,t0,ch.lat,ch.lon);renderHist();
   let pos=null,denied=false;
   try{setStatus('현재 위치 수신 중…');pos=await getPos(8000)}catch(e){denied=!!(e&&e.code===1)}
   if(pos){
@@ -876,22 +966,92 @@ async function engageGPS(){
   if(!pos){   // 위치를 못 받았거나 항로 계산이 안 됐으면: 목적지만 정해 두고 신호를 기다린다
     initTrip('gps',[],0);S.waiting=true;S.retryAt=0;S.busy=false;
   }
-  S.lastRe=Date.now();startWatch();audioInit();$('ov').classList.add('hide');setStatus('');
+  S.lastRe=Date.now();startWatch();audioInit();wakeOn();$('ov').classList.add('hide');setStatus('');
   $('bTs').textContent='×1';$('bPause').textContent='PAUSE';
   if(pos)hideToast();
   else if(denied)showToast('bad','위치 권한 거부','PERMISSION DENIED · 허용 후 자동 진행',0);
   else showWaitToast();
 }
 
+/* 시뮬레이션: 목적지를 지정한 경우 실제 경로(OSRM)로 가상 주행 */
+async function engageSimDest(){
+  const sim=s=>setStatus(s,0,'simStatus'),err=s=>setStatus(s,1,'simStatus');
+  const q=$('sdest').value.trim();if(!q){err('목적지를 입력하세요');return}
+  if(!PSD.chosen||PSD.chosen.name!==q){await PSD.search();return}
+  const oq=$('sorg').value.trim();let org=null;
+  if(oq){
+    if(!PSO.chosen||PSO.chosen.name!==oq){await PSO.search();sim('출발지 후보를 선택한 뒤 다시 ENGAGE를 누르세요.');return}
+    org={lat:PSO.chosen.lat,lon:PSO.chosen.lon};
+  }else{
+    try{sim('현재 위치 수신 중…');const p=await getPos(8000);org={lat:p.coords.latitude,lon:p.coords.longitude}}
+    catch(e){err('현재 위치를 받지 못했습니다. 출발지를 입력하거나 위치 권한을 확인해 주세요.');return}
+  }
+  const ch=PSD.chosen;
+  S.dest={lat:ch.lat,lon:ch.lon,name:ch.name};
+  try{
+    sim('항로 계산 중…');
+    S.ts=parseInt($('inTs').value,10)||10;
+    await buildRealRoute(org.lat,org.lon,false,'sim');
+  }catch(e){err('실패: '+(e&&e.message?e.message:'알 수 없는 오류')+' — 네트워크를 확인해 주세요.');return}
+  saveHist(ch.name,Date.now(),ch.lat,ch.lon);renderHist();
+  startSimUI();
+}
+function startSimUI(){
+  if(watchId!=null){navigator.geolocation.clearWatch(watchId);watchId=null}
+  S.sigLost=false;hideToast();wakeOn();setStatus('',0,'simStatus');
+  $('bTs').textContent='×'+S.ts;$('bPause').textContent='PAUSE';$('ov').classList.add('hide');
+}
+
+/* ---- 안내 종료 ---- */
+function endNav(){
+  if(watchId!=null){try{navigator.geolocation.clearWatch(watchId)}catch(e){}watchId=null}
+  wakeOff();
+  S.mode='idle';S.maneuvers=[];S.total=0;S.s=0;S.v=0;S.idx=0;S.turn=null;S.arrived=false;S.arrM=null;S.running=false;S.traffic=null;S.poly=null;
+  S.waiting=false;S.sigLost=false;S.rerouting=false;S.busy=false;S.manual=false;S.thr=0;S.dest=null;
+  hideToast();$('lpArr').classList.remove('on');$('ov').classList.remove('hide');
+}
+let stopTimer=null;
+function disarmStop(){clearTimeout(stopTimer);$('bStop').classList.remove('arm')}
+$('bStop').onclick=()=>{
+  if(!$('bStop').classList.contains('arm')){
+    $('bStop').classList.add('arm');stopTimer=setTimeout(disarmStop,3000);
+    showToast('warn','안내를 종료할까요?','한 번 더 누르면 종료됩니다 (3초 안에)',3000);beep(520,.08,.05);return;
+  }
+  disarmStop();endNav();
+};
+
+/* ---- 스로틀 레버 (시뮬레이션) ---- */
+const trk=$('thrTrk'),thrH=$('thrH'),HH=26;
+function thrFromEvent(e){
+  const r=trk.getBoundingClientRect(),p=1-(e.clientY-r.top-HH/2)/Math.max(1,r.height-HH);
+  S.manual=true;S.thr=clamp(p,0,1);
+}
+let thrDrag=false;
+trk.addEventListener('pointerdown',e=>{thrDrag=true;try{trk.setPointerCapture(e.pointerId)}catch(_){}thrFromEvent(e);e.preventDefault()});
+trk.addEventListener('pointermove',e=>{if(thrDrag)thrFromEvent(e)});
+['pointerup','pointercancel'].forEach(ev=>trk.addEventListener(ev,()=>{thrDrag=false}));
+$('bAuto').onclick=()=>{S.manual=false};
+function thrUpdate(){
+  const on=S.mode==='sim';
+  if(cache.thrOn!==on){cache.thrOn=on;$('thr').classList.toggle('on',on)}
+  if(!on)return;
+  const p=S.manual?S.thr:clamp(S.v/VMAX,0,1);
+  thrH.style.top=((1-p)*(trk.clientHeight-HH)).toFixed(1)+'px';
+  setTxt('thrV',pad(Math.round(p*VMAX),3));
+  setCls('bAuto','act',!S.manual);
+}
+
 /* ---------------- UI ---------------- */
 function tab(sim){$('tSim').classList.toggle('act',sim);$('tGps').classList.toggle('act',!sim);$('pSim').classList.toggle('on',sim);$('pGps').classList.toggle('on',!sim)}
 $('tSim').onclick=()=>tab(true);$('tGps').onclick=()=>{tab(false);renderHist()};
-$('goSim').onclick=()=>{
-  const km=clamp(parseFloat($('inKm').value)||25,3,300);S.ts=parseInt($('inTs').value,10)||10;
-  if(watchId!=null){navigator.geolocation.clearWatch(watchId);watchId=null}
+let simKind='rand';
+function setKind(k){simKind=k;$('mRand').classList.toggle('act',k==='rand');$('mDest').classList.toggle('act',k==='dest');$('sRand').style.display=k==='rand'?'block':'none';$('sDest').style.display=k==='dest'?'block':'none';setStatus('',0,'simStatus')}
+$('mRand').onclick=()=>setKind('rand');$('mDest').onclick=()=>{setKind('dest');renderHist()};
+$('goSim').onclick=async()=>{
   audioInit();if(AC&&AC.state==='suspended')AC.resume();
-  S.sigLost=false;hideToast();
-  initTrip('sim',genRoute(km),km);$('bTs').textContent='×'+S.ts;$('bPause').textContent='PAUSE';$('ov').classList.add('hide');
+  if(simKind==='dest'){await engageSimDest();return}
+  const km=clamp(parseFloat($('inKm').value)||25,3,300);S.ts=parseInt($('inTs').value,10)||10;
+  initTrip('sim',genRoute(km),km);startSimUI();
 };
 $('goGps').onclick=()=>{audioInit();if(AC&&AC.state==='suspended')AC.resume();engageGPS()};
 $('bSetup').onclick=()=>$('ov').classList.remove('hide');
