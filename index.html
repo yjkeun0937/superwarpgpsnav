@@ -83,14 +83,30 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .sgrow{display:flex;align-items:flex-end;gap:8px;margin-top:2px}
 .ctl{margin-top:6px!important}
 /* 안내 종료 (비상정지형) 버튼 */
-#bStop{display:none;flex:none;position:relative;width:64px;height:64px;margin:0 0 14px;padding:0;border:0;border-radius:50%;cursor:pointer;
-  background:repeating-conic-gradient(#ffcc1c 0 15deg,#111 15deg 30deg);box-shadow:0 0 0 2px #000,0 2px 8px #000}
-#bStop.on{display:block}
-#bStop i{position:absolute;inset:7px;border-radius:50%;border:2px solid #5a0a06;
-  background:radial-gradient(circle at 36% 30%,#ff9d90 0,#ff3b2e 30%,#c01610 65%,#7a0a06 100%);box-shadow:inset 0 -3px 5px rgba(0,0,0,.45),0 2px 4px #000}
-#bStop b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 13px 'Nanum Gothic Coding',monospace;color:#fff;text-shadow:0 1px 2px #000;letter-spacing:.02em;pointer-events:none}
-#bStop:active i{inset:9px;box-shadow:inset 0 2px 5px rgba(0,0,0,.6)}
-#bStop.arm{animation:bl .5s steps(2) infinite}
+#bStop{display:none;flex:none;position:relative;width:66px;height:54px;margin:0 0 14px;padding:0;cursor:pointer;
+  background:linear-gradient(rgba(70,6,3,.85),rgba(28,2,1,.9));border:2px solid var(--red);border-radius:0;color:var(--red);
+  box-shadow:0 0 10px rgba(255,65,54,.5),inset 0 0 10px rgba(255,65,54,.25);flex-direction:column;align-items:center;justify-content:center;gap:0;overflow:hidden}
+#bStop.on{display:flex}
+#bStop:before{content:"";position:absolute;left:3px;right:3px;top:3px;height:4px;background:repeating-linear-gradient(90deg,var(--red) 0 4px,transparent 4px 7px);opacity:.75}
+#bStop b{font:400 30px/.9 'VT323',monospace;letter-spacing:.06em;color:#ff6a5e;text-shadow:0 0 8px #ff4136cc,0 1px 2px #000;margin-top:6px;pointer-events:none}
+#bStop em{font:normal 11px 'Nanum Gothic Coding',monospace;color:#d9574d;letter-spacing:.04em;pointer-events:none;margin-bottom:2px}
+#bStop:active{background:var(--red)}#bStop:active b,#bStop:active em{color:#1a0200;text-shadow:none}
+#bStop.arm{animation:stopbl .5s steps(2) infinite}
+@keyframes stopbl{50%{background:var(--red)}}#bStop.arm:after{content:"";position:absolute;inset:0}
+.rng{-webkit-appearance:none;appearance:none;display:block;width:100%;height:30px;margin:2px 0;padding:0;border:0;background:transparent;outline:none;touch-action:pan-y}
+.rng::-webkit-slider-runnable-track{height:10px;background:repeating-linear-gradient(90deg,#1a5f52 0 5px,#04120f 5px 8px);border:1px solid var(--line)}
+.rng::-moz-range-track{height:8px;background:repeating-linear-gradient(90deg,#1a5f52 0 5px,#04120f 5px 8px);border:1px solid var(--line)}
+.rng::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:28px;margin-top:-10px;border-radius:2px;border:2px solid #101010;background:linear-gradient(#f0f0f0,#a8a8a8 45%,#5c5c5c);box-shadow:0 2px 5px #000}
+.rng::-moz-range-thumb{width:12px;height:24px;border-radius:2px;border:2px solid #101010;background:linear-gradient(#f0f0f0,#a8a8a8 45%,#5c5c5c)}
+.cfgrow{margin:14px 0 4px}
+.cfgh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.cfgh label{font-size:12px;color:var(--lab)}
+.cfgh b{font:400 28px 'VT323',monospace;color:var(--amb);text-shadow:0 0 8px #ffb21c88;line-height:1}
+.cfgm{position:relative;height:14px;margin:-2px 8px 0;font:13px 'VT323',monospace;color:var(--lab)}
+.cfgm span{position:absolute;transform:translateX(-50%)}
+.cfgm span:before{content:"";position:absolute;left:50%;top:-6px;width:1px;height:5px;background:var(--lab)}
+.cfgb{display:flex;gap:8px;margin-top:14px}
+.ov.sheet{align-items:flex-end;background:rgba(0,5,4,.38)}
 /* 스로틀 레버 (시뮬레이션) */
 #thr{position:absolute;left:8px;top:176px;bottom:222px;width:54px;display:none;flex-direction:column;align-items:center;gap:5px;pointer-events:none}
 #thr.on{display:flex}
@@ -107,7 +123,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .ctl{display:flex;gap:8px;margin-top:3px}
 .bt{flex:1;font:19px 'VT323',monospace;letter-spacing:.06em;background:#04120f;color:var(--fg);border:2px solid var(--line);padding:3px 4px;cursor:pointer}
 .bt:active,.bt.act{background:var(--fg);color:#021}
-.ctl .bt{font-size:16px;background:rgba(0,0,0,.35);border:1px solid rgba(23,70,61,.9);color:var(--lab);padding:1px 4px}
+.ctl .bt{font-size:15px;white-space:nowrap;letter-spacing:.02em;min-width:0;background:rgba(0,0,0,.35);border:1px solid rgba(23,70,61,.9);color:var(--lab);padding:1px 4px}
 .ctl .bt.act{background:rgba(125,255,216,.9);color:#021}
 .unit.u1{display:flex;flex-direction:column;justify-content:space-between;align-self:stretch;font-size:28px;line-height:.8;width:62px;padding:2px 0 4px;text-shadow:none}
 .unit.u1 span{display:block;transition:opacity .2s,text-shadow .2s}
@@ -233,15 +249,28 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
       </div>
       <div class="sgrow">
         <canvas id="sg"></canvas>
-        <button id="bStop" type="button" aria-label="안내 종료"><i></i><b>종료</b></button>
+        <button id="bStop" type="button" aria-label="안내 종료"><b>END</b><em>안내 종료</em></button>
       </div>
       <div class="ctl">
         <button class="bt" id="bSetup">SETUP</button>
         <button class="bt" id="bPause">PAUSE</button>
         <button class="bt" id="bTs">×10</button>
         <button class="bt" id="bSnd">SND OFF</button>
+        <button class="bt" id="bCfg">CONFIG</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="ov sheet hide" id="cfg">
+  <div class="card">
+    <h1>SYSTEM CONFIG</h1>
+    <p class="sm">효과 조절 · 바꾸는 즉시 적용되고 저장됩니다. (기준값 ×1)</p>
+    <div class="cfgrow"><div class="cfgh"><label>천체 통과 속도 (현재 속도에 비례)</label><b id="cfgFlyV">×1.00</b></div>
+      <input class="rng" id="cfgFly" type="range" min="50" max="300" step="5" value="100"><div class="cfgm" id="cfgFlyM"></div></div>
+    <div class="cfgrow"><div class="cfgh"><label>워프 줄기 길이</label><b id="cfgStV">×1.00</b></div>
+      <input class="rng" id="cfgSt" type="range" min="10" max="300" step="5" value="100"><div class="cfgm" id="cfgStM"></div></div>
+    <div class="cfgb"><button class="bt" id="cfgReset" type="button">RESET ×1</button><button class="bt act" id="cfgClose" type="button">CLOSE</button></div>
   </div>
 </div>
 
@@ -287,6 +316,10 @@ const ease=u=>u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const DROP_D=0.4;      // km: 워프 아웃 시작 거리
 const LY_PER_KM=1000;  // 1 km = 1,000 광년
+
+/* ---------------- 설정 (CONFIG) ---------------- */
+const CKEY='warpnav.cfg',CFG={fly:1,st:1};
+try{const o=JSON.parse(localStorage.getItem(CKEY)||'{}');if(o.fly>=.5&&o.fly<=3)CFG.fly=o.fly;if(o.st>=.1&&o.st<=3)CFG.st=o.st}catch(e){}
 
 /* ---------------- 상태 ---------------- */
 const S={mode:'idle',running:false,t:0,s:0,v:0,vAvg:50,total:0,maneuvers:[],idx:0,ts:10,
@@ -745,6 +778,7 @@ function startTurn(m){
 
 
 /* ---------------- 도로 굽이 → 별 흐름 / 스쳐 지나가는 천체 ---------------- */
+const FLY_K=.0145;                         // 천체 접근 속도 = FLY_K × 속도(km/h) × 설정배율  (100km/h에서 약 6초 통과)
 const CURVE_GAIN=1.7;                      // 실제 방위 변화율을 화면에서 과장하는 배율
 function synCurve(s){                       // 무작위 시뮬레이션용 가상의 완만한 굽이 (rad/km)
   const c=Math.sin(s*1.9+S.cp1)*Math.sin(s*.71+S.cp2);
@@ -774,7 +808,8 @@ function flyStep(dt,dn){
   const F=S.fly,moving=S.mode!=='idle'&&!S.arrived&&S.v>15;
   if(S.mode==='idle'||S.arrived){if(F||S.flyNext)resetFly();return}
   if(F){
-    F.t+=dt;F.Z=F.Z-F.vz*dt;
+    F.t+=dt;F.Z-=FLY_K*S.v*CFG.fly*dt;   // 현재 속도에 비례해서 다가온다
+    if(S.v<5)F.kill+=dt*.4;
     if(S.turn||dn<DROP_D+.12)F.kill+=dt*2.5;   // 회전·워프 아웃 직전에는 서서히 사라진다
     const x=W*.46+F.X/Math.max(.05,F.Z)*Math.sqrt(W*W+H*H)*.38;
     if(F.kill>=1||F.Z<.22||Math.abs(x-W*.46)>W*.9+F.R*Math.sqrt(W*W+H*H)*.38/Math.max(.05,F.Z)){disposeBody(F.b);S.fly=null;S.flyWait=16+Math.random()*26}
@@ -787,8 +822,7 @@ function flyStep(dt,dn){
     const b=S.flyNext;S.flyNext=null;
     const big=b.kind==='galaxy'||b.kind==='neb'||b.kind==='pneb',R=big?.5+Math.random()*.3:b.kind==='asteroid'?.32:.16+Math.random()*.16;
     const side=Math.random()<.5?-1:1,X=side*(R*1.25+.45+Math.random()*.55),Y=(Math.random()-.45)*.7;
-    const dur=clamp(9.5-S.v/22,4.5,8);
-    S.fly={b,X,Y,Z:9,R,t:0,vz:(9-.25)/dur,kill:0};
+    S.fly={b,X,Y,Z:9,R,t:0,kill:0};
   }
 }
 function drawFly(cx0,cy0,F0){
@@ -1130,7 +1164,7 @@ function render(dt){
   // 워프 스트릭
   if(w>.03){
     const vEff=S.mode==='idle'?70:S.v,sf=clamp(vEff/90,.35,1.4);
-    const zv=.015+w*w*(2+2.2*sf),len=.03+zv*.09,sh=w*.7,tau=clamp(len/zv,0,.25)*3;
+    const zv=.015+w*w*(2+2.2*sf),len=(.03+zv*.09)*CFG.st,sh=w*.7,tau=clamp(len/zv,0,.25)*3;
     const bk=[[],[],[],[]];
     for(const st of wst){
       st.x-=fx*zv*dt;st.z-=fz*zv*dt;
@@ -1716,6 +1750,21 @@ $('bSnd').onclick=()=>{
   S.snd=!S.snd;$('bSnd').textContent=S.snd?'SND ON':'SND OFF';$('bSnd').classList.toggle('act',S.snd);
   if(S.snd){audioInit();if(AC&&AC.state==='suspended')AC.resume();beep(880,.08)}
 };
+
+
+const cfgSave=()=>{try{localStorage.setItem(CKEY,JSON.stringify(CFG))}catch(e){}};
+function cfgMarks(id,min,max,list){$(id).innerHTML=list.map(v=>`<span style="left:${(v-min)/(max-min)*100}%">${v}</span>`).join('')}
+function cfgSync(){
+  $('cfgFly').value=Math.round(CFG.fly*100);$('cfgSt').value=Math.round(CFG.st*100);
+  $('cfgFlyV').textContent='×'+CFG.fly.toFixed(2);$('cfgStV').textContent='×'+CFG.st.toFixed(2);
+}
+cfgMarks('cfgFlyM',.5,3,['0.5','1','2','3']);cfgMarks('cfgStM',.1,3,['0.1','1','2','3']);
+$('cfgFly').oninput=e=>{CFG.fly=e.target.value/100;cfgSync();cfgSave()};
+$('cfgSt').oninput=e=>{CFG.st=e.target.value/100;cfgSync();cfgSave()};
+$('cfgReset').onclick=()=>{CFG.fly=1;CFG.st=1;cfgSync();cfgSave()};
+$('bCfg').onclick=()=>{cfgSync();$('cfg').classList.remove('hide')};
+$('cfgClose').onclick=()=>$('cfg').classList.add('hide');
+cfgSync();
 
 /* ---------------- 루프 ---------------- */
 let last=performance.now();
