@@ -27,6 +27,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .lp.blink.on{animation:bl .5s steps(2) infinite}
 #lpRe{display:none}#lpRe.on{display:inline-block}
 @keyframes bl{50%{opacity:.25}}
+#hdg.est{opacity:.5}
 #stardate{font:14px 'VT323',monospace;color:var(--lab);text-shadow:0 1px 3px #000;white-space:nowrap}
 #nav{display:flex;gap:10px;align-items:center;margin:10px 84px 0 10px;color:var(--amb)}
 #nav svg{width:58px;height:58px;flex:none;color:var(--amb);filter:drop-shadow(0 0 5px #ffb21caa)}
@@ -290,31 +291,395 @@ const LY_PER_KM=1000;  // 1 km = 1,000 광년
 /* ---------------- 상태 ---------------- */
 const S={mode:'idle',running:false,t:0,s:0,v:0,vAvg:50,total:0,maneuvers:[],idx:0,ts:10,
   w:1,warpOn:true,phi:0,turn:null,arrived:false,arrM:null,flash:0,side:1,cruise:60,snd:false,
-  traffic:null,sigLost:false,lastFixAt:0,dest:null,poly:null,pidx:0,rerouting:false,lastRe:0,waiting:false,busy:false,retryAt:0,manual:false,thr:0,neHue:220};
+  traffic:null,sigLost:false,lastFixAt:0,dest:null,poly:null,pidx:0,rerouting:false,lastRe:0,waiting:false,busy:false,retryAt:0,manual:false,thr:0,neHue:220,hdgT:null,hdgD:0,hdgReal:false,hdgPrev:null};
 
 /* ---------------- 천체 ---------------- */
-const BODIES=[['케플러-442b','ocean'],['프록시마 b','rock'],['알파 센타우리 A','star'],['시리우스 B','star'],
- ['베텔게우스','star'],['HD 209458 b','gas'],['TOI-700 d','ring'],['백조자리 X-1','hole'],
- ['TRAPPIST-1e','rock'],['글리제 581 g','ocean'],['55 Cancri e','rock'],['오리온 KL-7','gas'],
- ['LHS 1140 b','ocean'],['에리다누스 ε','ring'],['카노푸스','star'],['고래자리 τ','gas']];
-function makeBody(name,kind,seed){
-  const r=mulberry32(seed),b={name,kind,hue:Math.floor(r()*360),bands:[],spots:[]};
-  for(let i=0;i<16;i++)b.bands.push([r()*2-1,.05+r()*.2,28+r()*34,(r()-.5)*34]);
-  for(let i=0;i<22;i++)b.spots.push([r()*2-1,r()*1.6-.8,.05+r()*.16]);
-  if(kind==='star')b.hue=[48,24,8,205][Math.floor(r()*4)];
-  if(kind==='rock')b.hue=14+Math.floor(r()*36);
-  if(kind==='hole')b.hue=28;
-  if(kind==='ocean')b.hue=210;
+// [이름, 종류, 세부(문자열) 또는 옵션(객체)]  종류: earth barren gas city star hole pulsar quasar galaxy neb pneb asteroid
+const BODIES=[
+ ['케플러-442b','earth'],['프록시마 b','barren'],['HD 209458 b','gas'],['TOI-700 d','earth',{ring:1}],
+ ['알파 센타우리 A','star','Y'],['백조자리 X-1','hole'],['오리온 성운','neb'],
+ ['글리제 581 g','earth',{st:'wheel'}],['PSR B1919+21','pulsar'],['안드로메다 은하','galaxy','spiral'],
+ ['코러스칸 프라임','city'],['베텔게우스','star','R'],['에리다누스 ε','gas',{ring:1}],
+ ['3C 273','quasar'],['베스타 소행성대','asteroid'],['LHS 1140 b','earth',{st:'cube'}],
+ ['리겔','star','B'],['TRAPPIST-1e','barren',{ring:1}],['고리 성운','pneb'],['오리온 KL-7','gas',{st:'octa'}],
+ ['시리우스 B','star','W'],['바람개비 은하','galaxy','grand'],['네오 아르카디아','city',{st:'cube'}],
+ ['알비레오','star','Bin'],['55 Cancri e','barren',{lava:1}],['솜브레로 은하','galaxy','sombrero'],
+ ['고래자리 τ','gas',{st:'wheel',ring:1}],['세레스 군','asteroid'],['에리다누스 K2','star','K'],['독수리 성운','neb'],
+ ['HD 189733 b','gas',{st:'octa'}],['PSR J0437','pulsar'],['3C 48','quasar'],['카펠라 (쌍성)','star','Bin']];
+const HUEOF={earth:210,barren:25,gas:30,city:42,hole:28,pulsar:215,quasar:205,galaxy:265,neb:320,pneb:170,asteroid:30};
+const STARH={Y:48,R:8,B:215,W:200,K:28,Bin:210};
+
+function makeRing(b,r){
+  const base=b.kind==='gas'?[38,38,70]:b.kind==='earth'?[200,22,86]:[28,14,56],bands=[],sd=b.seed&127;
+  for(let i=0;i<72;i++){
+    const rad=1.3+i*.0125,gap=(rad>1.6&&rad<1.665)||(rad>1.93&&rad<1.975),n=vn(i*.33,sd,256,5),n2=vn(i*.8+7,sd,256,9);
+    bands.push({rad,w:.0135,h:base[0]+(n2-.5)*26,s:base[1],l:base[2]+(n-.5)*40,a:gap?.02:(.06+.7*Math.pow(n,1.5))*(rad>2.05?.5:1)});
+  }
+  return{tilt:(r()<.5?-1:1)*(.26+r()*.26),flat:.2+r()*.1,bands};
+}
+function makeBody(name,kind,seed,sub,o){
+  const r=mulberry32(seed);o=o||{};
+  const b={name,kind,sub:sub||'',seed,o,tex:null,clouds:null,lights:null,sp:null,ready:false,queued:false,tilt:(r()-.5)*.5,
+    ring:null,st:null,pal:Math.floor(r()*3),gp:Math.floor(r()*5),
+    rocks:Array.from({length:34},()=>({a:r()*6.28,rho:.95+r()*1.5,y:(r()-.5),sz:.035+Math.pow(r(),2.2)*.13,sp:(.05+r()*.12)*(r()<.5?-1:1),k:Math.floor(r()*4),rs:(r()-.5)*.8}))};
+  b.hue=kind==='star'?(STARH[b.sub]||48):kind==='gas'?[35,210,170,320,25][b.gp]:(HUEOF[kind]||200);
+  if(o.ring)b.ring=makeRing(b,r);
+  if(o.st)b.st=makeStation(o.st,seed+3);
+  if(kind==='galaxy')b.gx={spiral:{arms:2,tilt:.5,rot:-.45},grand:{arms:2,tilt:.92,rot:.2},sombrero:{arms:0,tilt:.2,rot:-.25}}[b.sub]||{arms:2,tilt:.6,rot:0};
   return b;
 }
 function assignBodies(ms,destName,seed){
   const r=mulberry32(seed),pool=BODIES.slice();
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
-  let k=0;
+  let k=0,lastKind='';
   ms.forEach((m,i)=>{
-    if(m.type==='ARR')m.body=makeBody(destName,'ocean',seed+99);
-    else{const p=pool[k++%pool.length];m.body=makeBody(p[0],p[1],seed+i*7)}
+    if(m.type==='ARR'){m.body=makeBody(destName,'earth',seed+99,'',{st:'wheel'});return}
+    let p=pool[k++%pool.length];if(p[1]===lastKind&&pool.length>2){p=pool[k++%pool.length]}   // 같은 종류가 연달아 나오는 것을 피한다
+    lastKind=p[1];
+    const x=p[2];m.body=makeBody(p[0],p[1],seed+i*7,typeof x==='string'?x:'',typeof x==='object'?x:null);
   });
+}
+
+/* ---- 텍스처 생성 (프레임을 막지 않도록 조금씩 나눠서 만든다) ---- */
+const JOBS=[];
+function runJobs(ms){const t0=performance.now();while(JOBS.length&&performance.now()-t0<ms){if(JOBS[0].next().done)JOBS.shift()}}
+function flushJobs(){while(JOBS.length){if(JOBS[0].next().done)JOBS.shift()}}
+const NZ=(()=>{const g=new Float32Array(65536),r=mulberry32(20241119);for(let i=0;i<65536;i++)g[i]=r();return g})();
+function vn(x,y,px,off){   // 가로 방향으로 이어지는 값 노이즈
+  const xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi,sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy);
+  const x0=((xi%px)+px)%px,x1=(x0+1)%px,y0=(yi+off)&255,y1=(y0+1)&255;
+  const a=NZ[(y0<<8)|x0],b=NZ[(y0<<8)|x1],c=NZ[(y1<<8)|x0],d=NZ[(y1<<8)|x1];
+  return a+(b-a)*sx+(c-a)*sy+(a-b-c+d)*sx*sy;
+}
+function fbm(x,y,px,oct,off){let s=0,a=.5,n=0;for(let o=0;o<oct;o++){s+=a*vn(x,y,px,off+o*37);n+=a;x*=2;y*=2;px*=2;a*=.5}return s/n}
+const sstep=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
+function mkLut(stops){const L=new Uint8ClampedArray(768);for(let i=0;i<256;i++){const t=i/255;let k=0;while(k<stops.length-2&&t>stops[k+1][0])k++;const a=stops[k],b=stops[k+1],f=clamp((t-a[0])/(b[0]-a[0]),0,1);for(let j=0;j<3;j++)L[i*3+j]=a[1+j]+(b[1+j]-a[1+j])*f}return L}
+function* pix(w,h,fn,after){
+  const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d'),id=g.createImageData(w,h),d=id.data;
+  for(let y=0;y<h;y++){const v=y/h;for(let x=0;x<w;x++)fn(x/w,v,d,(y*w+x)*4,x,y);if((y&3)===3)yield}
+  g.putImageData(id,0,0);if(after)after(g,c);return c;
+}
+function dbl(c){const d=document.createElement('canvas');d.width=c.width*2;d.height=c.height;const g=d.getContext('2d');g.drawImage(c,0,0);g.drawImage(c,c.width,0);return{c:d,w:c.width,h:c.height}}
+const hash=n=>{n=Math.imul(n^n>>>15,0x2c1b3c6d);n=Math.imul(n^n>>>12,0x297a2d39);return((n^n>>>15)>>>0)/4294967296};
+const put=(d,o,r,g,b,a)=>{d[o]=r;d[o+1]=g;d[o+2]=b;d[o+3]=a==null?255:a};
+
+/* 지구형 행성 */
+function* genEarth(b){
+  const r=mulberry32(b.seed+5),sd=Math.floor(r()*200),pal=b.pal;
+  const sea=pal===2?.62:.56;
+  const water=mkLut(pal===2?[[0,90,200,190],[.25,35,140,170],[1,8,45,80]]:[[0,80,180,185],[.22,30,110,170],[1,6,22,72]]);
+  const land=mkLut(pal===1?[[0,215,190,150],[.04,120,70,140],[.3,85,50,120],[.5,150,100,120],[.72,125,105,110],[.88,160,155,165],[1,245,248,252]]
+    :pal===2?[[0,225,195,150],[.04,175,105,60],[.3,150,80,45],[.5,170,115,75],[.72,120,95,80],[.88,160,150,145],[1,245,246,250]]
+    :[[0,215,200,140],[.04,60,118,56],[.3,46,96,46],[.5,112,116,68],[.72,120,102,86],[.88,150,150,152],[1,245,248,250]]);
+  const sand=pal===0?[205,172,104]:pal===1?[190,150,120]:[200,150,90];
+  const c=yield* pix(512,256,(u,v,d,o)=>{
+    const lat=Math.abs(v-.5)*2,h=fbm(u*6,v*3.4,6,6,sd),m=fbm(u*5+3,v*3+1,5,4,sd+50);
+    let R,G,B;
+    if(h<sea){const i=(clamp((sea-h)/.2,0,1)*255|0)*3;R=water[i];G=water[i+1];B=water[i+2]}
+    else{
+      const t=(h-sea)/(1-sea),i=(clamp(t*1.25,0,1)*255|0)*3;R=land[i];G=land[i+1];B=land[i+2];
+      if(m<.44&&lat<.72&&t>.03){const k=sstep(.44,.36,m)*.85;R+=(sand[0]-R)*k;G+=(sand[1]-G)*k;B+=(sand[2]-B)*k}
+    }
+    const cap=.84+.1*vn(u*14,v*7,14,sd)-.04,k=sstep(cap,cap+.05,lat);
+    R+=(236-R)*k;G+=(244-G)*k;B+=(250-B)*k;
+    put(d,o,R,G,B);
+  });
+  b.tex=dbl(c);
+  const cl=yield* pix(256,128,(u,v,d,o)=>{
+    const n=fbm(u*6+7,v*3,6,5,sd+9),m=fbm(u*2+1,v*1.3,2,3,sd+70),a=clamp((n-.575+.1*(m-.5))*3.6,0,1)*.85;
+    put(d,o,255,255,255,a*255);
+  });
+  b.clouds=dbl(cl);b.ready=true;
+}
+/* 불모 행성 (분화구, 용암 균열) */
+function* genBarren(b){
+  const r=mulberry32(b.seed+6),sd=Math.floor(r()*200),hue=14+Math.floor(r()*40),lava=!!b.o.lava;
+  const lut=mkLut(lava?[[0,24,18,16],[.5,70,52,44],[1,120,96,82]]:[[0,52,44,40],[.5,128,110,96],[1,190,172,150]]);
+  const tint=lava?[1,.9,.85]:[1+(hue-30)/220,1,1-(hue-30)/260];
+  const c=yield* pix(512,256,(u,v,d,o)=>{
+    const h=fbm(u*6,v*3,6,6,sd),mare=sstep(.42,.55,fbm(u*3+5,v*1.5,3,3,sd+4)),i=(clamp(h*(1-.3*mare)+.05,0,1)*255|0)*3;
+    let R=lut[i]*tint[0],G=lut[i+1]*tint[1],B=lut[i+2]*tint[2];
+    if(lava){const rd=Math.abs(fbm(u*9+2,v*4.5,9,4,sd+9)-.5),k=clamp(1-rd/.028,0,1);R+=k*255;G+=k*120;B+=k*20}
+    put(d,o,R,G,B);
+  },(g)=>{
+    for(let i=0;i<110;i++){
+      const cxp=r()*512,cyp=r()*256,rad=2+Math.pow(r(),2.4)*22;
+      for(const dx of[0,-512,512]){
+        const px=cxp+dx;if(px<-rad*1.5||px>512+rad*1.5)continue;
+        const gr=g.createRadialGradient(px-rad*.18,cyp-rad*.18,rad*.1,px,cyp,rad);
+        gr.addColorStop(0,'rgba(0,0,0,.34)');gr.addColorStop(.8,'rgba(0,0,0,.18)');gr.addColorStop(.93,'rgba(255,240,220,.26)');gr.addColorStop(1,'rgba(255,240,220,0)');
+        g.fillStyle=gr;g.beginPath();g.arc(px,cyp,rad,0,6.283);g.fill();
+      }
+    }
+  });
+  b.tex=dbl(c);b.ready=true;
+}
+/* 가스 행성 */
+const GASPAL=[
+ [[0,222,196,156],[.25,186,136,92],[.5,238,224,204],[.75,150,100,70],[1,214,182,138]],
+ [[0,34,66,150],[.5,86,146,222],[1,196,222,250]],
+ [[0,28,110,120],[.5,80,176,170],[1,206,240,226]],
+ [[0,120,40,110],[.5,214,120,170],[1,250,214,214]],
+ [[0,150,70,30],[.5,224,150,70],[1,248,226,170]]];
+function* genGas(b){
+  const r=mulberry32(b.seed+7),sd=Math.floor(r()*200),lut=mkLut(GASPAL[b.gp]);
+  const c=yield* pix(512,256,(u,v,d,o)=>{
+    const w=fbm(u*3,v*5,3,4,sd)*.09,n=fbm(u*1.6,(v+w)*16,2,5,sd+3),s=.5+.5*Math.sin((v+w*.7)*44+n*3),t=clamp(.62*n+.38*s,0,1);
+    const i=(clamp((t-.2)*1.5,0,1)*255|0)*3,pole=sstep(.78,1,Math.abs(v-.5)*2)*.35;
+    put(d,o,lut[i]*(1-pole),lut[i+1]*(1-pole),lut[i+2]*(1-pole*.6));
+  },(g)=>{
+    const sx=(.15+r()*.7)*512,sy=(.55+r()*.15)*256;
+    for(const dx of[0,-512,512]){
+      const gr=g.createRadialGradient(sx+dx,sy,0,sx+dx,sy,34);
+      gr.addColorStop(0,`hsla(${(b.hue+190)%360},55%,70%,.95)`);gr.addColorStop(.55,`hsla(${(b.hue+8)%360},60%,45%,.8)`);gr.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle=gr;g.beginPath();g.ellipse(sx+dx,sy,40,19,0,0,6.283);g.fill();
+    }
+    for(let i=0;i<6;i++){g.fillStyle='rgba(255,255,255,.32)';g.beginPath();g.ellipse(r()*512,40+r()*176,5+r()*8,2.5+r()*3,0,0,6.283);g.fill()}
+  });
+  b.tex=dbl(c);b.ready=true;
+}
+/* 도시 행성 (밤면 도시 불빛) */
+function* genCity(b){
+  const r=mulberry32(b.seed+8),sd=Math.floor(r()*200),tintC=r()<.4;
+  const c=yield* pix(512,256,(u,v,d,o)=>{
+    const n=fbm(u*8,v*4,8,5,sd),pole=sstep(.8,.97,Math.abs(v-.5)*2),g=34+n*46;
+    put(d,o,g*(1+.1*pole)+pole*150,g*1.02+pole*158,g*1.15+pole*165);
+  });
+  b.tex=dbl(c);
+  const L=yield* pix(512,256,(u,v,d,o,x,y)=>{
+    const lat=Math.abs(v-.5)*2,D=fbm(u*6+3,v*3+1,6,5,sd),cap=1-sstep(.78,.95,lat);
+    const dens=sstep(.3,.5,D)*cap,r1=Math.abs(fbm(u*10+11,v*5,10,3,sd+3)-.5),road=clamp(1-r1/.02,0,1),r2=Math.abs(fbm(u*24+5,v*12,24,2,sd+8)-.5),road2=clamp(1-r2/.011,0,1);
+    const sp=hash(o+sd),blob=sstep(.52,.72,D),I=clamp(dens*(.26+.55*road*(D>.3?1:0)+.25*road2)+blob*.4+(sp<dens*.08?.7*dens:0),0,1)*cap*.72;
+    const tint=tintC&&fbm(u*3+9,v*1.5,3,2,sd+20)>.55;
+    put(d,o,255*I*(tint?.5:1),(150+60*sp)*I*(tint?.95:.9),(70+(tint?160:30)*sp)*I,255);
+  });
+  b.lights=dbl(L);b.ready=true;
+}
+
+/* 항성 표면 (종류별 공유) */
+const SUNSPEC={
+ Y:{lut:[[0,150,52,6],[.45,255,158,28],[.8,255,222,110],[1,255,252,226]],cell:[24,12,4],spot:1,glow:[255,190,70],k:.86},
+ R:{lut:[[0,56,6,3],[.45,176,44,16],[1,255,140,56]],cell:[6,3,3],spot:0,glow:[255,86,44],k:1.08},
+ B:{lut:[[0,165,198,255],[1,255,255,255]],cell:[12,6,3],spot:0,glow:[140,185,255],k:.8,lo:.5},
+ W:{lut:[[0,200,225,255],[1,255,255,255]],cell:[8,4,2],spot:0,glow:[190,220,255],k:.36,lo:.7},
+ K:{lut:[[0,110,34,5],[.5,232,116,24],[1,255,200,92]],cell:[16,8,4],spot:1,glow:[255,140,50],k:.78}};
+const SUNTEX={};
+function* genSun(sub){
+  const sp=SUNSPEC[sub],lut=mkLut(sp.lut),sd=sub.charCodeAt(0)*3,cx0=sp.cell[0],cy0=sp.cell[1],oc=sp.cell[2]+2;
+  const c=yield* pix(512,256,(u,v,d,o)=>{
+    const n=fbm(u*cx0,v*cy0,cx0,oc,sd),m=fbm(u*5+2,v*2.5+1,5,3,sd+9);
+    let t=clamp((n-.24)*1.8,0,1);
+    if(sp.spot){const s=sstep(.62,.7,fbm(u*3,v*1.6,3,3,sd+4));t*=1-.72*s}
+    t=clamp(t+(m-.5)*.18,0,1);if(sp.lo)t=sp.lo+(1-sp.lo)*t;
+    const i=(t*255|0)*3;put(d,o,lut[i],lut[i+1],lut[i+2]);
+  });
+  SUNTEX[sub]=dbl(c);
+}
+/* 소행성 스프라이트: 울퉁불퉁한 모양 + 분화구 + 조명 */
+function* genRock(size,seed,warm){
+  const r=mulberry32(seed),N=size,ar=.62+r()*.3,cr=[];
+  for(let i=0;i<9;i++)cr.push([(r()-.5)*1.3,(r()-.5)*1.3,.08+r()*.22]);
+  const L=[-.55,-.55,.63],ang=r()*6.28;
+  const c=yield* pix(N,N,(u,v,d,o)=>{
+    let x=(u-.5)*2,y=(v-.5)*2;const ca=Math.cos(ang),sa=Math.sin(ang);const xr=x*ca+y*sa,yr=(-x*sa+y*ca)/ar;
+    const rr=Math.hypot(xr,yr),th=Math.atan2(yr,xr),edge=.74+.22*vn(Math.cos(th)*2+4+seed%50,Math.sin(th)*2+4,256,seed&127)+.06*vn(Math.cos(th)*6+9,Math.sin(th)*6+9,256,seed&63);
+    const q=rr/edge;if(q>1.02){put(d,o,0,0,0,0);return}
+    const hgt=(px,py)=>{let h=Math.sqrt(Math.max(0,1-(Math.hypot(px,py)/edge)**2))*.8+(fbm(px*3+seed%30,py*3,256,4,seed&127)-.5)*.5;
+      for(const k of cr){const dd=Math.hypot(px-k[0],py-k[1])/k[2];if(dd<1)h-=(1-dd*dd)*.22;else if(dd<1.25)h+=(1.25-dd)*.12}return h};
+    const e=.012,hx=hgt(xr+e,yr)-hgt(xr-e,yr),hy=hgt(xr,yr+e)-hgt(xr,yr-e);
+    // 화면 좌표계 법선 (회전 보정)
+    let nx=-hx/(2*e)*.55,ny=-hy/(2*e)*.55;const nx2=nx*ca-ny*sa,ny2=nx*sa+ny*ca;
+    const nz=1,nl=Math.hypot(nx2,ny2,nz),lam=clamp((nx2*L[0]+ny2*L[1]+nz*L[2])/nl,0,1);
+    const gr=fbm(u*30,v*30,256,3,seed&127)*.35+.78,I=(.1+.9*lam)*gr,a=clamp((1.02-q)*20,0,1);
+    put(d,o,(warm?150:128)*I*1.25,(warm?128:122)*I*1.25,(warm?108:118)*I*1.25,a*255);
+  });
+  return c;
+}
+let ROCKS=null;
+function* genRocks(){ROCKS=[];for(let i=0;i<4;i++)ROCKS.push(yield* genRock(96,500+i*37,i%2))}
+/* 은하 */
+function* genGalaxy(b){
+  const N=512,c=document.createElement('canvas');c.width=c.height=N;const g=c.getContext('2d'),r=mulberry32(b.seed+9);
+  const rg=()=>(r()+r()+r()+r()-2)/2;   // 가우스 근사
+  g.fillStyle='#000';g.fillRect(0,0,N,N);g.globalCompositeOperation='lighter';
+  const sub=b.sub,arms=b.gx.arms,C=N/2,Rm=N*.46;
+  const col=(rn)=>rn<.25?[255,226,170]:rn<.55?[236,226,214]:[170,200,255];
+  const star=(x,y,rn,a,s)=>{const q=col(rn);g.fillStyle=`rgba(${q[0]},${q[1]},${q[2]},${a})`;g.fillRect(x,y,s,s)};
+  // 후광
+  let gr=g.createRadialGradient(C,C,0,C,C,Rm);gr.addColorStop(0,'rgba(120,110,100,.42)');gr.addColorStop(.5,'rgba(70,80,110,.2)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(0,0,N,N);
+  for(let i=0;i<24000;i++){
+    let rn,th;
+    if(arms>0){rn=Math.pow(r(),1.5)*.98+.02;const a=Math.floor(r()*arms);th=a*6.2832/arms+4.4*Math.log(1+rn*3.6)+rg()*(.62-.3*rn);if(i%4===0){th=r()*6.2832}}
+    else{rn=Math.pow(r(),1.9)*.98+.02;th=r()*6.2832}
+    const rr=rn*Rm*(1+rg()*.04),x=C+Math.cos(th)*rr,y=C+Math.sin(th)*rr;
+    star(x,y,rn,.1+.5*r(),r()<.08?2:1);
+    if(i%5===0){const q=col(rn);g.fillStyle=`rgba(${q[0]},${q[1]},${q[2]},.028)`;g.beginPath();g.arc(x,y,6+r()*12,0,6.283);g.fill()}
+    if(arms>0&&rn>.3&&r()<.035){g.fillStyle='rgba(255,110,170,.5)';g.beginPath();g.arc(x,y,1.6+r()*2,0,6.283);g.fill()}
+    if(i%2500===0)yield;
+  }
+  // 팽대부
+  gr=g.createRadialGradient(C,C,0,C,C,Rm*(arms?.3:.42));gr.addColorStop(0,'rgba(255,240,205,1)');gr.addColorStop(.3,'rgba(255,214,150,.6)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(0,0,N,N);
+  // 먼지 띠
+  g.globalCompositeOperation='source-over';
+  for(let i=0;i<2200;i++){
+    let rn,th;
+    if(arms>0){rn=Math.pow(r(),1.3)*.9+.1;const a=Math.floor(r()*arms);th=a*6.2832/arms+4.4*Math.log(1+rn*3.6)-.2+rg()*.05}
+    else{rn=.5+r()*.1;th=r()*6.2832}
+    g.fillStyle=`rgba(0,0,0,${arms?.14:.2})`;g.beginPath();g.arc(C+Math.cos(th)*rn*Rm,C+Math.sin(th)*rn*Rm,3+r()*6,0,6.283);g.fill();
+    if(i%800===0)yield;
+  }
+  b.tex={c,w:N,h:N};b.ready=true;
+}
+/* 성운 */
+function* genNeb(b){
+  const N=320,r=mulberry32(b.seed+11),sd=Math.floor(r()*200),planetary=b.kind==='pneb';
+  const pals=[[[0,10,4,40],[.3,150,30,120],[.6,255,100,150],[1,255,235,230]],[[0,4,30,48],[.3,20,120,140],[.62,90,210,200],[1,240,250,235]],[[0,40,10,10],[.35,170,60,30],[.65,255,160,70],[1,255,240,200]]];
+  const lut=mkLut(pals[Math.floor(r()*3)]),lut2=mkLut([[0,60,10,20],[.5,230,60,80],[1,255,170,170]]),lut3=mkLut([[0,10,60,70],[.5,70,220,200],[1,225,255,250]]);
+  const c=yield* pix(N,N,(u,v,d,o)=>{
+    const x=u*5,y=v*5,qx=fbm(x,y,256,4,sd),qy=fbm(x+5.2,y+1.3,256,4,sd+9),n=fbm(x+2.6*qx,y+2.6*qy,256,5,sd+3);
+    const dx=u-.5,dy=v-.5,dist=Math.hypot(dx,dy);
+    if(planetary){
+      const rho=dist/.5,shell=Math.exp(-(((rho-.6)/.13)**2))+.4*Math.exp(-(((rho-.86)/.18)**2)),m=shell*(.45+.9*n);
+      const a=clamp(m*1.2,0,1),t=clamp(rho*1.3,0,1);
+      const L2=rho<.62?lut3:lut2,i=(clamp(.35+.65*n,0,1)*255|0)*3;
+      put(d,o,L2[i]*(.6+a),L2[i+1]*(.6+a),L2[i+2]*(.6+a),a*230*(1-sstep(.88,1,rho)));
+    }else{
+      const fall=1-sstep(.3,.5,dist),dens=clamp((n-.36)*2.7,0,1)*fall;
+      const i=(clamp(n*1.25,0,1)*255|0)*3;put(d,o,lut[i],lut[i+1],lut[i+2],dens*240);
+    }
+  },(g)=>{
+    for(let i=0;i<(planetary?20:140);i++){
+      const x=N*(.1+r()*.8),y=N*(.1+r()*.8),s=.8+Math.pow(r(),3)*2.6,gr=g.createRadialGradient(x,y,0,x,y,s*6);
+      gr.addColorStop(0,'rgba(255,255,255,.95)');gr.addColorStop(.2,'rgba(200,220,255,.4)');gr.addColorStop(1,'rgba(200,220,255,0)');g.fillStyle=gr;g.beginPath();g.arc(x,y,s*6,0,6.283);g.fill();
+    }
+    if(planetary){const gr=g.createRadialGradient(N/2,N/2,0,N/2,N/2,24);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.3,'rgba(190,225,255,.6)');gr.addColorStop(1,'rgba(190,225,255,0)');g.fillStyle=gr;g.beginPath();g.arc(N/2,N/2,24,0,6.283);g.fill()}
+  });
+  b.tex={c,w:N,h:N};b.ready=true;
+}
+/* 소행성 본체 */
+function* genAsteroid(b){
+  if(!ROCKS)yield* genRocks();
+  b.sp=yield* genRock(256,b.seed+13,b.seed&1);b.ready=true;
+}
+function* genBody(b){
+  const k=b.kind;
+  if(k==='earth')yield* genEarth(b);else if(k==='barren')yield* genBarren(b);else if(k==='gas')yield* genGas(b);else if(k==='city')yield* genCity(b);
+  else if(k==='galaxy')yield* genGalaxy(b);else if(k==='neb'||k==='pneb')yield* genNeb(b);else if(k==='asteroid')yield* genAsteroid(b);
+  else if(k==='star'){const need=b.sub==='Bin'?['B','K']:[b.sub];for(const s of need)if(!SUNTEX[s])yield* genSun(s);b.ready=true}
+  else b.ready=true;   // 블랙홀·펄서·퀘이사는 텍스처 없이 그린다
+}
+function queueBody(b){if(b.queued)return;b.queued=true;JOBS.push(genBody(b))}
+function disposeBody(b){if(!b.queued)return;b.tex=b.clouds=b.lights=b.sp=null;b.ready=false;b.queued=false}
+let prepMs=null,prepIdx=-1;
+function prepBodies(){   // 앞으로 만날 천체 3개 텍스처를 미리 만들고, 지나간 것은 해제한다
+  if(prepMs===S.maneuvers&&prepIdx===S.idx)return;prepMs=S.maneuvers;prepIdx=S.idx;
+  S.maneuvers.forEach((m,i)=>{if(!m.body)return;if(i<S.idx-1)disposeBody(m.body);else if(i<=S.idx+2)queueBody(m.body)});
+}
+
+/* ---- 우주 정거장 (간단한 3D 다각형 렌더링) ---- */
+const V3={add:(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],sc:(a,k)=>[a[0]*k,a[1]*k,a[2]*k]};
+function makeStation(type,seed){
+  const r=mulberry32(seed),F=[],HULL=[170,178,192],SOL=[30,62,140];
+  const face=(p,col,k)=>F.push({p,c:col,k:k||0});
+  const hull=(p,sh)=>{const q=HULL.map(x=>x*sh);const k=r()<.2?3:r()<.07?2:0;face(p,k===2?[60,66,78]:q,k)};
+  const panel=(o,ux,uz,nx,nz,w,h)=>{   // 평면 태양전지판: o 기준, ux/uz 방향 벡터
+    for(let i=0;i<nx;i++)for(let j=0;j<nz;j++){
+      const a=i/nx,b=(i+1)/nx,c=j/nz,d=(j+1)/nz,P=(s,t)=>V3.add(o,V3.add(V3.sc(ux,s*w),V3.sc(uz,t*h)));
+      const sh=.82+.3*r();face([P(a,c),P(b,c),P(b,d),P(a,d)],SOL.map(x=>x*sh),1);
+    }
+  };
+  const box=(c,hx,hy,hz,col)=>{const P=(sx,sy,sz)=>[c[0]+sx*hx,c[1]+sy*hy,c[2]+sz*hz];
+    [[[1,-1,-1],[1,1,-1],[1,1,1],[1,-1,1]],[[-1,-1,-1],[-1,1,-1],[-1,1,1],[-1,-1,1]],[[-1,1,-1],[1,1,-1],[1,1,1],[-1,1,1]],[[-1,-1,-1],[1,-1,-1],[1,-1,1],[-1,-1,1]],[[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]],[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1]]]
+      .forEach(q=>face(q.map(t=>P(t[0],t[1],t[2])),col,0))};
+  const pyr=(c,base,apex,col)=>{const A=[[c[0]-base,c[1],c[2]-base],[c[0]+base,c[1],c[2]-base],[c[0]+base,c[1],c[2]+base],[c[0]-base,c[1],c[2]+base]];
+    for(let i=0;i<4;i++)face([A[i],A[(i+1)%4],apex],col,0)};
+  let size=.25,axis='y';
+  if(type==='cube'){
+    const fr=[[[0,0,1],[1,0,0],[0,1,0]],[[0,0,-1],[-1,0,0],[0,1,0]],[[1,0,0],[0,0,-1],[0,1,0]],[[-1,0,0],[0,0,1],[0,1,0]],[[0,1,0],[1,0,0],[0,0,-1]],[[0,-1,0],[1,0,0],[0,0,1]]],Nn=4;
+    const P=(n,u,v,a,b,h)=>[n[0]*h+u[0]*a+v[0]*b,n[1]*h+u[1]*a+v[1]*b,n[2]*h+u[2]*a+v[2]*b];
+    fr.forEach(([n,u,v])=>{
+      for(let i=0;i<Nn;i++)for(let j=0;j<Nn;j++){
+        const ca=(i+.5)/Nn*2-1,cb=(j+.5)/Nn*2-1,h=1/Nn;
+        hull([P(n,u,v,ca-h,cb-h,1),P(n,u,v,ca+h,cb-h,1),P(n,u,v,ca+h,cb+h,1),P(n,u,v,ca-h,cb+h,1)],.86+.16*r());
+      }
+      for(let g=0;g<3;g++){   // 표면 돌출물
+        const a=(r()-.5)*1.4,b=(r()-.5)*1.4,s=.09+.07*r(),ht=.05+.1*r(),t=1+ht;
+        const q=(x,y,hh)=>P(n,u,v,a+x*s,b+y*s,hh);
+        face([q(-1,-1,t),q(1,-1,t),q(1,1,t),q(-1,1,t)],HULL.map(x=>x*.95),0);
+        [[-1,-1,1,-1],[1,-1,1,1],[1,1,-1,1],[-1,1,-1,-1]].forEach(e=>face([q(e[0],e[1],1),q(e[2],e[3],1),q(e[2],e[3],t),q(e[0],e[1],t)],HULL.map(x=>x*.74),0));
+      }
+    });
+    pyr([0,1,0],.05,[0,2.05,0],[205,205,215]);box([0,2.15,0],.16,.05,.16,[210,60,40]);
+    [-1,1].forEach(s=>{box([s*1.25,0,0],.25,.05,.05,[120,126,140]);panel([s*1.5,0,-.8],[s,0,0],[0,0,1],5,2,2,1.6)});
+  }else if(type==='octa'){
+    const subdiv=(t,l)=>{if(!l)return[t];const m=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2],[a,b,c]=t,ab=m(a,b),bc=m(b,c),ca=m(c,a);
+      return[...subdiv([a,ab,ca],l-1),...subdiv([ab,b,bc],l-1),...subdiv([ca,bc,c],l-1),...subdiv([ab,bc,ca],l-1)]};
+    for(const sx of[-1,1])for(const sy of[-1,1])for(const sz of[-1,1])
+      subdiv([[sx,0,0],[0,sy,0],[0,0,sz]],2).forEach(t=>hull(t,.84+.2*r()));
+    [1,-1].forEach(s=>{pyr([0,s*1.0,0],.07,[0,s*2.4,0],[200,200,212])});
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(d=>{
+      const ux=[d[0],0,d[1]],uz=[-d[1],0,d[0]];panel([ux[0]*1.05+uz[0]*-.5,0,ux[2]*1.05+uz[2]*-.5],ux,uz,4,2,1.2,1);
+    });
+    size=.23;
+  }else{   // wheel
+    const NS=34,R=1,tk=.075,hw=.2;
+    for(let i=0;i<NS;i++){
+      const a0=i/NS*6.2832,a1=(i+1)/NS*6.2832,c0=Math.cos(a0),s0=Math.sin(a0),c1=Math.cos(a1),s1=Math.sin(a1),ro=R+tk,ri=R-tk,sh=.84+.2*r();
+      const P=(c,s,rad,z)=>[c*rad,s*rad,z];
+      hull([P(c0,s0,ro,-hw),P(c1,s1,ro,-hw),P(c1,s1,ro,hw),P(c0,s0,ro,hw)],sh);
+      face([P(c0,s0,ri,-hw),P(c1,s1,ri,-hw),P(c1,s1,ri,0),P(c0,s0,ri,0)],[96,104,120],r()<.55?3:0);
+      face([P(c0,s0,ri,0),P(c1,s1,ri,0),P(c1,s1,ri,hw),P(c0,s0,ri,hw)],[96,104,120],r()<.55?3:0);
+      hull([P(c0,s0,ro,hw),P(c1,s1,ro,hw),P(c1,s1,ri,hw),P(c0,s0,ri,hw)],sh*1.04);
+      hull([P(c0,s0,ro,-hw),P(c1,s1,ro,-hw),P(c1,s1,ri,-hw),P(c0,s0,ri,-hw)],sh*.94);
+    }
+    for(let k=0;k<4;k++){const a=k*1.5708+.4,c=Math.cos(a),s=Math.sin(a),px=-s,py=c,w=.03;
+      const A=(rad,o,z)=>[c*rad+px*o,s*rad+py*o,z];
+      [[-1,-1],[1,-1],[1,1],[-1,1]].forEach((q,i,arr)=>{const n=arr[(i+1)%4];face([A(.22,q[0]*w,q[1]*w),A(R-tk,q[0]*w,q[1]*w),A(R-tk,n[0]*w,n[1]*w),A(.22,n[0]*w,n[1]*w)],[150,156,170],0)});
+    }
+    const HN=12;for(let i=0;i<HN;i++){const a0=i/HN*6.2832,a1=(i+1)/HN*6.2832,P=(a,rad,z)=>[Math.cos(a)*rad,Math.sin(a)*rad,z];
+      face([P(a0,.22,-.34),P(a1,.22,-.34),P(a1,.22,.34),P(a0,.22,.34)],[184,190,204],0);
+      face([P(a0,.22,.34),P(a1,.22,.34),P(a1,.1,.52),P(a0,.1,.52)],[196,200,212],0);
+      face([P(a0,.22,-.34),P(a1,.22,-.34),P(a1,.1,-.52),P(a0,.1,-.52)],[196,200,212],0);
+      face([P(a0,.1,.52),P(a1,.1,.52),P(a1,.05,.78),P(a0,.05,.78)],[224,92,52],0);}
+    size=.38;axis='z';
+  }
+  return{type,F,size,axis};
+}
+const rotM=(ax,a)=>{const c=Math.cos(a),s=Math.sin(a);return ax==='x'?[[1,0,0],[0,c,-s],[0,s,c]]:ax==='y'?[[c,0,s],[0,1,0],[-s,0,c]]:[[c,-s,0],[s,c,0],[0,0,1]]};
+const mm=(A,B)=>A.map((_,i)=>[0,1,2].map(j=>A[i][0]*B[0][j]+A[i][1]*B[1][j]+A[i][2]*B[2][j]));
+const LDIR=(()=>{const v=[-.5,.55,.67],l=Math.hypot(...v);return v.map(x=>x/l)})();
+function stationPos(b,x,y,r,t){
+  const a=t*.27+b.seed*.37,rho=r*(b.ring?2.3:1.62);
+  return{x:x+Math.cos(a)*rho,y:y+Math.sin(a)*rho*.3-rho*.04,z:Math.sin(a)};
+}
+function drawStation(st,sp,r,t){
+  const s=r*st.size*(.88+.12*sp.z),F=st.F;
+  let M;
+  if(st.axis==='z')M=mm(rotM('x',1.05),mm(rotM('y',.45+.14*Math.sin(t*.2)),rotM('z',t*.5)));
+  else M=mm(rotM('x',.5+.18*Math.sin(t*.3)),mm(rotM('y',t*.38),rotM('z',.3)));
+  const out=[];
+  for(let i=0;i<F.length;i++){
+    const f=F[i],P=f.p.map(p=>[M[0][0]*p[0]+M[0][1]*p[1]+M[0][2]*p[2],M[1][0]*p[0]+M[1][1]*p[1]+M[1][2]*p[2],M[2][0]*p[0]+M[2][1]*p[1]+M[2][2]*p[2]]);
+    let z=0;for(const q of P)z+=q[2];out.push({f,P,z:z/P.length});
+  }
+  out.sort((a,b)=>a.z-b.z);
+  cx.save();cx.lineJoin='round';
+  const lw=Math.max(.35,s*.012);
+  for(const o of out){
+    const P=o.P,f=o.f;
+    const ux=P[1][0]-P[0][0],uy=P[1][1]-P[0][1],uz=P[1][2]-P[0][2],vx=P[P.length-1][0]-P[0][0],vy=P[P.length-1][1]-P[0][1],vz=P[P.length-1][2]-P[0][2];
+    let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;const nl=Math.hypot(nx,ny,nz)||1;
+    const lam=Math.abs((nx*LDIR[0]+ny*LDIR[1]+nz*LDIR[2])/nl),I=.2+.8*lam+(f.k===1?Math.pow(lam,10)*.5:0);
+    cx.fillStyle=`rgb(${f.c[0]*I|0},${f.c[1]*I|0},${f.c[2]*I|0})`;
+    cx.beginPath();P.forEach((q,i)=>{const px=sp.x+q[0]*s,py=sp.y-q[1]*s;i?cx.lineTo(px,py):cx.moveTo(px,py)});cx.closePath();cx.fill();
+    cx.strokeStyle='rgba(6,10,16,.5)';cx.lineWidth=lw;cx.stroke();
+    if(f.k===3){   // 창문 불빛
+      let mx=0,my=0;P.forEach(q=>{mx+=q[0];my+=q[1]});mx/=P.length;my/=P.length;
+      cx.fillStyle='rgba(255,214,140,.95)';cx.beginPath();
+      P.forEach((q,i)=>{const px=sp.x+(mx+(q[0]-mx)*.5)*s,py=sp.y-(my+(q[1]-my)*.5)*s;i?cx.lineTo(px,py):cx.moveTo(px,py)});cx.closePath();cx.fill();
+    }
+  }
+  cx.restore();
 }
 
 /* ---------------- 항로 (시뮬레이션) ---------------- */
@@ -378,6 +743,8 @@ function startTurn(m){
 
 function update(dt){
   S.t+=dt;
+  {const h=headingTarget();   // 나침반 방위 부드럽게 추적 (최단 회전)
+   if(h!=null&&h!==undefined){const d=((h-S.hdgD+540)%360)-180;S.hdgD=((S.hdgD+d*Math.min(1,dt*4))%360+360)%360}}
   if(S.mode==='sim'&&S.running&&!S.arrived)stepSim(dt);
   else if(S.mode==='gps'&&!S.arrived)S.s=Math.min(S.total,S.s+S.v/3600*dt);
   if(S.mode!=='idle'&&S.v>5)S.vAvg+=(S.v-S.vAvg)*Math.min(1,dt*.05);
@@ -422,62 +789,254 @@ function nebula(hue,a){
   g.addColorStop(0,`hsla(${(hue+70)%360},65%,30%,${.22*a})`);g.addColorStop(1,'hsla(0,0%,0%,0)');cx.fillStyle=g;cx.fillRect(0,0,W,H);
 }
 
-function drawBody(b,x,y,r,a){
-  if(a<=.01||r<.5)return;
-  const t=S.t;
-  if(b.kind==='star')r*=.72;
-  cx.save();cx.globalAlpha=a;
-  const circ=()=>{cx.beginPath();cx.arc(x,y,r,0,Math.PI*2)};
-  const shade=()=>{
-    const g=cx.createRadialGradient(x-r*.45,y-r*.45,r*.1,x-r*.2,y-r*.2,r*1.7);
-    g.addColorStop(0,'rgba(255,255,255,.14)');g.addColorStop(.45,'rgba(0,0,0,.15)');g.addColorStop(1,'rgba(0,0,0,.88)');
-    cx.fillStyle=g;circ();cx.fill();
-  };
-  const globe=(base,spotCol,rim)=>{
-    cx.save();circ();cx.clip();cx.fillStyle=base;cx.fillRect(x-r,y-r,2*r,2*r);
-    b.spots.forEach((s,i)=>{
-      const ang=s[0]*Math.PI+t*.12,c=Math.cos(ang);if(c<=0)return;
-      const px=x+Math.sin(ang)*r*.92,py=y+s[1]*r,rr=s[2]*r*(.5+.9*c);
-      cx.fillStyle=spotCol(i);cx.beginPath();cx.ellipse(px,py,rr*c+1,rr,0,0,Math.PI*2);cx.fill();
-    });
+
+/* ---------------- 천체 그리기 ---------------- */
+function sphereTex(t,x,y,r,rot,alpha,comp){   // 가로로 이어진 텍스처를 구면처럼 슬라이스로 그린다
+  if(!t)return;
+  const w=t.w,h=t.h,n=Math.max(36,Math.min(120,Math.round(r*.62))),step=2*r/n;
+  cx.save();if(comp)cx.globalCompositeOperation=comp;if(alpha!=null)cx.globalAlpha*=alpha;
+  for(let i=0;i<n;i++){
+    const nu=(-r+i*step+step/2)/r,cz=Math.sqrt(Math.max(.0004,1-nu*nu)),lon=Math.asin(clamp(nu,-.999,.999)),hc=r*cz;
+    const sx=(((rot+lon/6.2832)%1)+1)%1*w,sw=Math.min(w*.2,Math.max(1,step/(r*cz)/6.2832*w*1.1));
+    cx.drawImage(t.c,sx,h/2-h*cz/2,sw,h*cz,x-r+i*step,y-hc,step+.8,2*hc);
+  }
+  cx.restore();
+}
+const circPath=(x,y,r)=>{cx.beginPath();cx.arc(x,y,r,0,6.2832)};
+function glowDisc(x,y,r0,r1,rgb,a0,a1){const g=cx.createRadialGradient(x,y,r0,x,y,r1);g.addColorStop(0,`rgba(${rgb},${a0})`);g.addColorStop(1,`rgba(${rgb},${a1||0})`);cx.fillStyle=g;circPath(x,y,r1);cx.fill()}
+function placeholder(b,x,y,r){glowDisc(x,y,0,r*.9,`${Math.round(120+60*Math.sin(b.hue))},150,200`,.35,0)}
+
+function atmosphere(x,y,r,rgb,k){
+  cx.save();cx.globalCompositeOperation='lighter';
+  const g=cx.createRadialGradient(x,y,r*.9,x,y,r*1.16);
+  g.addColorStop(0,`rgba(${rgb},0)`);g.addColorStop(.28,`rgba(${rgb},${.5*k})`);g.addColorStop(1,`rgba(${rgb},0)`);
+  cx.fillStyle=g;circPath(x,y,r*1.16);cx.fill();
+  // 빛을 받는 쪽 가장자리를 더 밝게
+  const g2=cx.createRadialGradient(x-r*.5,y-r*.5,r*.4,x-r*.5,y-r*.5,r*1.5);
+  g2.addColorStop(0,'rgba(255,255,255,0)');g2.addColorStop(.62,'rgba(255,255,255,0)');g2.addColorStop(.8,`rgba(${rgb},${.26*k})`);g2.addColorStop(1,'rgba(255,255,255,0)');
+  cx.beginPath();cx.arc(x,y,r,0,6.2832);cx.clip();cx.fillStyle=g2;cx.fillRect(x-r,y-r,2*r,2*r);
+  cx.restore();
+}
+function terminator(x,y,r,dark){
+  const g=cx.createRadialGradient(x-r*.42,y-r*.42,r*.12,x-r*.2,y-r*.2,r*1.72);
+  g.addColorStop(0,'rgba(255,255,255,.12)');g.addColorStop(.42,`rgba(0,0,0,${.1*dark})`);g.addColorStop(1,`rgba(0,0,0,${Math.min(.95,.86*dark)})`);
+  cx.fillStyle=g;circPath(x,y,r);cx.fill();
+}
+function drawRing(b,x,y,r,front){
+  const R=b.ring;cx.save();cx.translate(x,y);cx.rotate(R.tilt);cx.scale(1,R.flat);
+  const a0=front?0:Math.PI,a1=front?Math.PI:6.2832;
+  for(const q of R.bands){cx.strokeStyle=`hsla(${q.h},${q.s}%,${q.l}%,${q.a})`;cx.lineWidth=q.w*r*1.25;cx.beginPath();cx.arc(0,0,q.rad*r,a0,a1);cx.stroke()}
+  cx.restore();
+}
+function drawPlanet(b,x,y,r,t){
+  if(b.ring&&b.st)r*=.58;else if(b.ring)r*=.7;else if(b.st)r*=.68;
+  if(!b.ready){placeholder(b,x,y,r);return}
+  const rot=t*(b.kind==='gas'?.018:.012)+b.seed*.0013;
+  let sp=null;if(b.st){sp=stationPos(b,x,y,r,t);if(sp.z<0)drawStation(b.st,sp,r,t)}
+  if(b.ring)drawRing(b,x,y,r,false);
+  cx.save();circPath(x,y,r);cx.clip();cx.translate(x,y);cx.rotate(b.tilt);cx.translate(-x,-y);
+  sphereTex(b.tex,x,y,r*1.02,rot);
+  if(b.clouds)sphereTex(b.clouds,x,y,r*1.02,rot*1.4+.2,.78);
+  cx.restore();
+  if(b.kind==='city'){
+    terminator(x,y,r,1.05);
+    cx.save();circPath(x,y,r);cx.clip();cx.translate(x,y);cx.rotate(b.tilt);cx.translate(-x,-y);
+    sphereTex(b.lights,x,y,r*1.02,rot,.9,'lighter');cx.restore();
+    const g=cx.createRadialGradient(x-r*.55,y-r*.5,0,x-r*.55,y-r*.5,r*.9);g.addColorStop(0,'rgba(255,238,215,.3)');g.addColorStop(.7,'rgba(255,238,215,.04)');g.addColorStop(1,'rgba(255,238,215,0)');
+    cx.fillStyle=g;circPath(x,y,r);cx.fill();
+    atmosphere(x,y,r,'255,170,90',.7);
+  }else{
+    terminator(x,y,r,b.kind==='barren'?1.05:1);
+    atmosphere(x,y,r,b.kind==='earth'?'110,170,255':b.kind==='gas'?([ '255,210,150','150,190,255','150,230,220','255,170,220','255,190,120'][b.gp]):'255,200,170',b.kind==='barren'?(b.o.lava?.5:.12):.62);
+  }
+  if(b.ring)drawRing(b,x,y,r,true);
+  if(sp&&sp.z>=0)drawStation(b.st,sp,r,t);
+}
+
+/* 항성 */
+function drawSun(sub,x,y,r,t,seed){
+  const sp=SUNSPEC[sub],tx=SUNTEX[sub],rr=r*sp.k,g=sp.glow.join(',');
+  cx.save();cx.globalCompositeOperation='lighter';
+  glowDisc(x,y,rr*.7,rr*(sub==='W'?4:3.4),g,sub==='W'?.34:.5,0);
+  glowDisc(x,y,rr*.9,rr*1.45,g,.38,0);
+  // 코로나 줄기
+  const nS=sub==='R'?0:sub==='W'?0:10;
+  for(let i=0;i<nS;i++){
+    const a=seed+i*.628+t*.02*(i%2?1:-1),L=rr*(1.5+.9*vn(i*3.1,t*.15,64,seed&63));
+    const gr=cx.createLinearGradient(x+Math.cos(a)*rr*.95,y+Math.sin(a)*rr*.95,x+Math.cos(a)*L,y+Math.sin(a)*L);
+    gr.addColorStop(0,`rgba(${g},.32)`);gr.addColorStop(1,`rgba(${g},0)`);cx.strokeStyle=gr;cx.lineWidth=rr*.09;cx.beginPath();
+    cx.moveTo(x+Math.cos(a)*rr*.95,y+Math.sin(a)*rr*.95);cx.lineTo(x+Math.cos(a)*L,y+Math.sin(a)*L);cx.stroke();
+  }
+  cx.restore();
+  if(sub==='W'){glowDisc(x,y,0,rr*1.3,'235,245,255',1,0);cx.fillStyle='#fff';circPath(x,y,rr);cx.fill()}
+  else if(tx){
+    cx.save();circPath(x,y,rr);cx.clip();sphereTex(tx,x,y,rr,t*.006+seed*.01);
+    const lg=cx.createRadialGradient(x,y,rr*.35,x,y,rr);lg.addColorStop(0,'rgba(0,0,0,0)');lg.addColorStop(.75,`rgba(0,0,0,${sub==='B'?.05:.16})`);lg.addColorStop(1,`rgba(0,0,0,${sub==='R'?.72:sub==='B'?.2:.55})`);
+    cx.fillStyle=lg;cx.fillRect(x-rr,y-rr,2*rr,2*rr);
+    cx.restore();
+  }else{cx.fillStyle=`rgb(${g})`;circPath(x,y,rr);cx.fill()}
+  // 홍염 / 플레어 스파이크
+  cx.save();cx.globalCompositeOperation='lighter';cx.lineCap='round';
+  if(sub==='Y'||sub==='K'||sub==='R'){
+    const n=sub==='R'?4:3;
+    for(let k=0;k<n;k++){
+      const a=seed+k*2.1+t*.03,h=rr*(sub==='R'?.9:.5)*(1+.3*Math.sin(t*.7+k*2)),w=.3+.08*Math.sin(t*.5+k);
+      const x0=x+Math.cos(a)*rr*.98,y0=y+Math.sin(a)*rr*.98,x1=x+Math.cos(a+w)*rr*.98,y1=y+Math.sin(a+w)*rr*.98,xc=x+Math.cos(a+w/2)*(rr+h*2),yc=y+Math.sin(a+w/2)*(rr+h*2);
+      cx.strokeStyle=`rgba(255,110,40,.3)`;cx.lineWidth=rr*.07;cx.beginPath();cx.moveTo(x0,y0);cx.quadraticCurveTo(xc,yc,x1,y1);cx.stroke();
+      cx.strokeStyle=`rgba(255,200,120,.65)`;cx.lineWidth=rr*.022;cx.stroke();
+    }
+  }
+  if(sub==='B'||sub==='W'){
+    const L=rr*(sub==='W'?5:3.6),pulse=.85+.15*Math.sin(t*3+seed);
+    for(let i=0;i<2;i++){
+      const a=i*Math.PI/2+.12;const gr=cx.createLinearGradient(x-Math.cos(a)*L,y-Math.sin(a)*L,x+Math.cos(a)*L,y+Math.sin(a)*L);
+      gr.addColorStop(0,'rgba(190,220,255,0)');gr.addColorStop(.5,`rgba(220,238,255,${.7*pulse})`);gr.addColorStop(1,'rgba(190,220,255,0)');
+      cx.strokeStyle=gr;cx.lineWidth=Math.max(1,rr*.05);cx.beginPath();cx.moveTo(x-Math.cos(a)*L,y-Math.sin(a)*L);cx.lineTo(x+Math.cos(a)*L,y+Math.sin(a)*L);cx.stroke();
+    }
+  }
+  cx.restore();
+}
+function drawStar(b,x,y,r,t){
+  const sub=b.sub;
+  if(sub==='Bin'){
+    if(!SUNTEX.B||!SUNTEX.K){placeholder(b,x,y,r);return}
+    const a=t*.32+b.seed,rho=r*.62,pa={x:x+Math.cos(a)*rho,y:y+Math.sin(a)*rho*.38,z:Math.sin(a)},pb={x:x-Math.cos(a)*rho*1.35,y:y-Math.sin(a)*rho*.38*1.35,z:-Math.sin(a)};
+    const A=[pa,'B',r*.72],B=[pb,'K',r*.62];
+    // 물질 이동 흐름 (작은 별 → 큰 별)
+    const drawStream=()=>{
+      cx.save();cx.globalCompositeOperation='lighter';cx.lineCap='round';
+      const mx=(pa.x+pb.x)/2+(pb.y-pa.y)*.25,my=(pa.y+pb.y)/2-(pb.x-pa.x)*.25;
+      cx.setLineDash([r*.05,r*.04]);cx.lineDashOffset=-t*26;
+      cx.strokeStyle='rgba(255,170,90,.5)';cx.lineWidth=r*.07;cx.beginPath();cx.moveTo(pb.x,pb.y);cx.quadraticCurveTo(mx,my,pa.x,pa.y);cx.stroke();
+      cx.strokeStyle='rgba(255,236,200,.7)';cx.lineWidth=r*.022;cx.stroke();cx.restore();
+    };
+    const order=pa.z<pb.z?[A,B]:[B,A];
+    drawSun(order[0][1],order[0][0].x,order[0][0].y,order[0][2],t,b.seed);
+    if(order[0]===A)drawStream();
+    drawSun(order[1][1],order[1][0].x,order[1][0].y,order[1][2],t,b.seed+3);
+    if(order[0]!==A)drawStream();
+    return;
+  }
+  if(!SUNTEX[sub]&&sub!=='W'){placeholder(b,x,y,r);return}
+  drawSun(sub,x,y,r*.8,t,b.seed);
+}
+/* 블랙홀 (중력 렌즈 강착원반) */
+function drawHole(b,x,y,r,t){
+  const rh=r*.46;
+  cx.save();
+  glowDisc(x,y,rh,r*2.6,'255,150,60',.2,0);
+  const disc=(a0,a1,flat,k)=>{   // 강착원반: 안쪽은 뜨겁고 빠르게 회전
+    cx.save();cx.translate(x,y);cx.rotate(-.2);cx.scale(1,flat);cx.globalCompositeOperation='lighter';
+    for(let i=0;i<26;i++){
+      const f=i/25,rad=rh*(1.18+f*2.3),hue=48-34*f,l=88-38*f,al=(.78-.6*f)*k;
+      const gr=cx.createLinearGradient(-rad,0,rad,0);gr.addColorStop(0,`hsla(${hue},100%,${l}%,${al*1.5})`);gr.addColorStop(.5,`hsla(${hue},100%,${l}%,${al*.7})`);gr.addColorStop(1,`hsla(${hue-8},100%,${l-12}%,${al*.35})`);
+      cx.strokeStyle=gr;cx.lineWidth=rh*.2;cx.setLineDash([rad*(.8+vn(i*1.7,0,64,3)*2),rad*(.03+vn(i*2.3,5,64,9)*.14)]);cx.lineDashOffset=-t*(34-24*f)*rh*.02*(i%2?1:1);
+      cx.beginPath();cx.arc(0,0,rad,a0,a1);cx.stroke();
+    }
     cx.restore();
   };
-  if(b.kind==='gas'||b.kind==='ring'){
-    if(b.kind==='ring'){ // 뒤쪽 고리
-      cx.save();cx.translate(x,y);cx.rotate(-.38);cx.scale(1,.26);
-      [[1.55,.16,.5],[1.85,.1,.35],[2.05,.2,.25]].forEach(q=>{cx.strokeStyle=`hsla(${b.hue+20},40%,70%,${q[2]})`;cx.lineWidth=r*q[1];cx.beginPath();cx.arc(0,0,r*q[0],Math.PI,Math.PI*2);cx.stroke()});
-      cx.restore();
+  cx.save();cx.translate(x,y);cx.rotate(-.2);cx.scale(1,.2);cx.globalCompositeOperation='lighter';glowDisc(0,0,rh,rh*3.8,'255,170,70',.4,0);cx.restore();
+  disc(Math.PI,Math.PI*2,.21,1);                      // 뒤쪽 원반
+  // 렌즈로 휘어 보이는 원반 (위·아래 아치)
+  cx.save();cx.globalCompositeOperation='lighter';
+  for(let i=0;i<12;i++){
+    const f=i/11,rad=rh*(1.08+f*.95);cx.strokeStyle=`hsla(${44-22*f},100%,${84-30*f}%,${.5-.38*f})`;cx.lineWidth=rh*.13;
+    cx.beginPath();cx.arc(x,y,rad,Math.PI*1.05,Math.PI*1.95);cx.stroke();
+    cx.beginPath();cx.arc(x,y,rh*(1.06+f*.38),Math.PI*.15,Math.PI*.85);cx.globalAlpha=.55;cx.stroke();cx.globalAlpha=1;
+  }
+  cx.restore();
+  cx.fillStyle='#000';circPath(x,y,rh);cx.fill();
+  cx.save();cx.globalCompositeOperation='lighter';cx.strokeStyle='rgba(255,236,190,.95)';cx.lineWidth=Math.max(1,rh*.035);circPath(x,y,rh*1.02);cx.stroke();
+  cx.strokeStyle='rgba(255,200,120,.35)';cx.lineWidth=rh*.12;circPath(x,y,rh*1.07);cx.stroke();cx.restore();
+  disc(0,Math.PI,.21,1.15);                            // 앞쪽 원반
+  cx.restore();
+}
+/* 펄서: 빠르게 회전하는 중성자별과 빔 */
+function drawPulsar(b,x,y,r,t){
+  const th=t*2.6+b.seed,core=r*.11,fl=Math.pow(Math.max(0,Math.cos(th*2)),30);
+  cx.save();cx.globalCompositeOperation='lighter';
+  glowDisc(x,y,0,r*1.8,'90,140,255',.28,0);
+  // 자기장 선
+  cx.lineWidth=Math.max(1,r*.012);
+  for(let k=0;k<5;k++){const sc=.45+k*.16;cx.strokeStyle=`rgba(130,180,255,${.34-.04*k})`;cx.save();cx.translate(x,y);cx.rotate(th*.0+.45);
+    cx.beginPath();cx.ellipse(-r*sc*.18,0,r*sc*.5,r*sc*1.1,0,0,6.2832);cx.stroke();cx.beginPath();cx.ellipse(r*sc*.18,0,r*sc*.5,r*sc*1.1,0,0,6.2832);cx.stroke();cx.restore()}
+  // 회전 빔 (등대처럼 훑고 지나간다)
+  for(let i=0;i<2;i++){
+    const a=th+i*Math.PI,L=Math.max(W,H)*.85,w=r*.075,ca=Math.cos(a),sa=Math.sin(a);
+    const gr=cx.createLinearGradient(x,y,x+ca*L,y+sa*L);gr.addColorStop(0,'rgba(200,225,255,.9)');gr.addColorStop(.3,'rgba(120,170,255,.4)');gr.addColorStop(1,'rgba(90,130,255,0)');
+    cx.fillStyle=gr;cx.beginPath();cx.moveTo(x-sa*core*.6,y+ca*core*.6);cx.lineTo(x+ca*L-sa*w,y+sa*L+ca*w);cx.lineTo(x+ca*L+sa*w,y+sa*L-ca*w);cx.lineTo(x+sa*core*.6,y-ca*core*.6);cx.closePath();cx.fill();
+  }
+  glowDisc(x,y,0,r*(.5+.9*fl),'190,220,255',.7+.3*fl,0);
+  cx.restore();
+  glowDisc(x,y,0,core*2.2,'210,230,255',1,0);cx.fillStyle='#fff';circPath(x,y,core);cx.fill();
+  if(fl>.2){cx.save();cx.globalCompositeOperation='lighter';cx.fillStyle=`rgba(210,230,255,${fl*.18})`;cx.fillRect(0,0,W,H);cx.restore()}
+}
+/* 퀘이사: 눈부신 핵과 상대론적 제트 */
+function drawQuasar(b,x,y,r,t){
+  const ang=-1.15+.05*Math.sin(t*.1),ca=Math.cos(ang),sa=Math.sin(ang),fl=.9+.1*Math.sin(t*5)+.05*Math.sin(t*13+b.seed);
+  cx.save();cx.globalCompositeOperation='lighter';
+  glowDisc(x,y,0,r*2.8,'90,130,255',.2,0);
+  for(let s=-1;s<=1;s+=2){
+    const L=r*3.3;
+    // 제트 (바깥으로 갈수록 넓어지고 흐려진다)
+    for(let k=0;k<3;k++){
+      const w0=r*(.025+k*.03),w1=r*(.09+k*.1),al=[.85,.4,.16][k];
+      const gr=cx.createLinearGradient(x,y,x+ca*L*s,y+sa*L*s);gr.addColorStop(0,`rgba(190,215,255,${al})`);gr.addColorStop(.6,`rgba(90,140,255,${al*.45})`);gr.addColorStop(1,'rgba(70,100,255,0)');
+      cx.fillStyle=gr;cx.beginPath();cx.moveTo(x-sa*w0,y+ca*w0);cx.lineTo(x+ca*L*s-sa*w1,y+sa*L*s+ca*w1);cx.lineTo(x+ca*L*s+sa*w1,y+sa*L*s-ca*w1);cx.lineTo(x+sa*w0,y-ca*w0);cx.closePath();cx.fill();
     }
-    cx.save();circ();cx.clip();cx.fillStyle=`hsl(${b.hue},45%,38%)`;cx.fillRect(x-r,y-r,2*r,2*r);
-    b.bands.forEach(q=>{cx.fillStyle=`hsla(${b.hue+q[3]},48%,${q[2]}%,.7)`;cx.fillRect(x-r,y+q[0]*r-q[1]*r/2,2*r,q[1]*r)});
-    cx.restore();shade();
-    if(b.kind==='ring'){
-      cx.save();cx.translate(x,y);cx.rotate(-.38);cx.scale(1,.26);
-      [[1.55,.16,.5],[1.85,.1,.35],[2.05,.2,.25]].forEach(q=>{cx.strokeStyle=`hsla(${b.hue+20},40%,70%,${q[2]})`;cx.lineWidth=r*q[1];cx.beginPath();cx.arc(0,0,r*q[0],0,Math.PI);cx.stroke()});
-      cx.restore();
+    for(let k=1;k<=6;k++){   // 제트 매듭
+      const d=(k/6.5)*L,wob=Math.sin(t*1.3+k*2+s)*r*.03,px=x+ca*d*s-sa*wob,py=y+sa*d*s+ca*wob;
+      glowDisc(px,py,0,r*(.09+.02*k),'190,215,255',.5*(1-k/7)*(.7+.3*Math.sin(t*3+k)),0);
     }
-  }else if(b.kind==='rock'){
-    globe(`hsl(${b.hue},26%,38%)`,i=>i%3?'rgba(0,0,0,.28)':'rgba(255,230,200,.1)');shade();
-  }else if(b.kind==='ocean'){
-    globe('hsl(212,65%,30%)',i=>i%4===0?'rgba(255,255,255,.18)':'hsla(96,38%,32%,.92)');
-    cx.save();circ();cx.clip();cx.fillStyle='rgba(255,255,255,.55)';
-    cx.fillRect(x-r,y-r,2*r,r*.1);cx.fillRect(x-r,y+r*.9,2*r,r*.1);cx.restore();
-    shade();
-    cx.strokeStyle='rgba(120,200,255,.35)';cx.lineWidth=Math.max(1,r*.04);circ();cx.stroke();
-  }else if(b.kind==='star'){
-    const h=b.hue;
-    let g=cx.createRadialGradient(x,y,r*.15,x,y,r*2.4);
-    g.addColorStop(0,`hsla(${h},100%,96%,1)`);g.addColorStop(.22,`hsla(${h},100%,72%,.95)`);g.addColorStop(.5,`hsla(${h},100%,55%,.32)`);g.addColorStop(1,`hsla(${h},100%,50%,0)`);
-    cx.fillStyle=g;cx.beginPath();cx.arc(x,y,r*2.4,0,Math.PI*2);cx.fill();
-    cx.strokeStyle=`hsla(${h},100%,85%,.35)`;cx.lineWidth=Math.max(1,r*.02);
-    for(let i=0;i<4;i++){const an=t*.05+i*Math.PI/2;cx.beginPath();cx.moveTo(x-Math.cos(an)*r*2.6,y-Math.sin(an)*r*2.6);cx.lineTo(x+Math.cos(an)*r*2.6,y+Math.sin(an)*r*2.6);cx.stroke()}
-  }else if(b.kind==='hole'){
-    const disc=(a0,a1)=>{cx.save();cx.translate(x,y);cx.rotate(-.25);cx.scale(1,.2);
-      [[1.1,.14,'255,200,90',.9],[1.5,.2,'255,120,30',.6],[2,.28,'200,60,20',.3]].forEach(q=>{cx.strokeStyle=`rgba(${q[2]},${q[3]})`;cx.lineWidth=r*q[1];cx.beginPath();cx.arc(0,0,r*q[0],a0,a1);cx.stroke()});cx.restore()};
-    disc(Math.PI,Math.PI*2);
-    cx.strokeStyle='rgba(255,210,120,.8)';cx.lineWidth=Math.max(1,r*.05);cx.beginPath();cx.arc(x,y,r*.6,0,Math.PI*2);cx.stroke();
-    cx.fillStyle='#000';cx.beginPath();cx.arc(x,y,r*.55,0,Math.PI*2);cx.fill();
-    disc(0,Math.PI);
+    glowDisc(x+ca*L*s*.97,y+sa*L*s*.97,0,r*.55,'110,150,255',.2,0);   // 제트 끝 로브
+  }
+  // 먼지 토러스 + 강착원반
+  cx.save();cx.translate(x,y);cx.rotate(ang+Math.PI/2);cx.scale(1,.24);
+  for(let i=0;i<10;i++){const f=i/9,rad=r*(.2+f*.55);cx.strokeStyle=`hsla(${34-20*f},100%,${88-34*f}%,${.7-.55*f})`;cx.lineWidth=r*.07;cx.setLineDash([rad*1.4,rad*.25]);cx.lineDashOffset=-t*(30-20*f);cx.beginPath();cx.arc(0,0,rad,0,6.2832);cx.stroke()}
+  cx.restore();
+  glowDisc(x,y,0,r*(.75*fl),'255,245,225',1,0);
+  glowDisc(x,y,0,r*.2,'255,255,255',1,.0);
+  // 렌즈 플레어
+  const fg=cx.createLinearGradient(x-W,y,x+W,y);fg.addColorStop(0,'rgba(120,180,255,0)');fg.addColorStop(.5,`rgba(210,235,255,${.55*fl})`);fg.addColorStop(1,'rgba(120,180,255,0)');
+  cx.fillStyle=fg;cx.fillRect(x-W,y-1.2,2*W,2.4);
+  cx.restore();
+}
+function drawGalaxy(b,x,y,r,t){
+  if(!b.ready){placeholder(b,x,y,r);return}
+  const g=b.gx,R=r*3.3;
+  cx.save();cx.globalCompositeOperation='lighter';cx.translate(x,y);cx.rotate(g.rot);cx.scale(1,Math.max(.08,g.tilt));cx.rotate(t*.035);
+  cx.drawImage(b.tex.c,-R/2,-R/2,R,R);
+  cx.restore();
+  if(g.tilt<.3){   // 정면에 가까운 시점의 먼지 띠를 따라 빛나는 핵
+    cx.save();cx.globalCompositeOperation='lighter';glowDisc(x,y,0,r*.5,'255,225,170',.5,0);cx.restore();
+  }
+}
+function drawNeb(b,x,y,r,t){
+  if(!b.ready){placeholder(b,x,y,r);return}
+  const R=r*3.3*(1+.012*Math.sin(t*.4));
+  cx.save();cx.globalCompositeOperation='lighter';cx.translate(x,y);cx.rotate(t*.006+b.seed*.1);cx.drawImage(b.tex.c,-R/2,-R/2,R,R);cx.restore();
+}
+function drawAsteroid(b,x,y,r,t){
+  if(!b.ready||!ROCKS){placeholder(b,x,y,r);return}
+  const items=b.rocks.map(q=>{const a=q.a+t*q.sp,z=Math.sin(a);return{q,a,z,X:x+Math.cos(a)*q.rho*r*1.15,Y:y+Math.sin(a)*q.rho*r*.26+q.y*r*.5}});
+  items.sort((p,q)=>p.z-q.z);
+  const rock=o=>{const q=o.q,s=q.sz*r*2.6*(.78+.22*o.z);cx.save();cx.translate(o.X,o.Y);cx.rotate(t*q.rs+q.a);cx.globalAlpha*=clamp(.55+.45*(o.z+1)/2,0,1);cx.drawImage(ROCKS[q.k],-s/2,-s/2,s,s);cx.restore()};
+  items.filter(o=>o.z<0).forEach(rock);
+  cx.save();cx.translate(x,y);cx.rotate(t*.05);const s=r*1.6;cx.drawImage(b.sp,-s/2,-s/2,s,s);cx.restore();
+  items.filter(o=>o.z>=0).forEach(rock);
+}
+function drawBody(b,x,y,r,a){
+  if(a<=.01||r<.5)return;
+  const t=S.t;cx.save();cx.globalAlpha=a;
+  switch(b.kind){
+    case 'earth':case 'barren':case 'gas':case 'city':drawPlanet(b,x,y,r,t);break;
+    case 'star':drawStar(b,x,y,r,t);break;
+    case 'hole':drawHole(b,x,y,r,t);break;
+    case 'pulsar':drawPulsar(b,x,y,r,t);break;
+    case 'quasar':drawQuasar(b,x,y,r,t);break;
+    case 'galaxy':drawGalaxy(b,x,y,r,t);break;
+    case 'neb':case 'pneb':drawNeb(b,x,y,r,t);break;
+    case 'asteroid':drawAsteroid(b,x,y,r,t);break;
   }
   cx.restore();
 }
@@ -647,8 +1206,10 @@ function hud(){
   }else setTxt('eta','--:--');
   setHTML('leg',S.traffic?'교통 <i style="background:#5dffa0"></i>원활 <i style="background:#ffb21c"></i>서행 <i style="background:#ff4136"></i>정체':(active?'교통정보 없음 (TRAFFIC N/A)':''));
 
-  const deg=((Math.round(S.phi*180/Math.PI)%360)+360)%360;
-  setTxt('hdg',String(deg).padStart(3,'0')+'°');
+  const ht=headingTarget();   // 값이 있으면 실제 방위, null이면 가상 시선, undefined면 미확정
+  const deg=ht==null&&ht!==undefined?((Math.round(S.phi*180/Math.PI)%360)+360)%360:Math.round(S.hdgD)%360;
+  setTxt('hdg',ht===undefined?'---°':String(deg).padStart(3,'0')+'°');
+  setCls('hdg','est',S.mode==='gps'&&!S.hdgReal);
   if(cache.deg!==deg){cache.deg=deg;$('dialRot').setAttribute('transform',`rotate(${-deg} 30 30)`)}
   const now=new Date(),doy=Math.floor((now-new Date(now.getFullYear(),0,0))/864e5);
   setTxt('stardate',`${now.getFullYear()}.${String(doy).padStart(3,'0')}.${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`);
@@ -729,6 +1290,31 @@ async function getJSON(u){const r=await fetch(u);if(!r.ok)throw new Error('HTTP 
 function getPos(ms){return new Promise((ok,ng)=>{if(!navigator.geolocation)return ng(new Error('GPS 미지원'));navigator.geolocation.getCurrentPosition(ok,ng,{enableHighAccuracy:true,maximumAge:5000,timeout:ms||15000})})}
 function hav(a,b){const R=6371,r=Math.PI/180,dl=(b[1]-a[1])*r,dn=(b[0]-a[0])*r,x=Math.sin(dl/2)**2+Math.cos(a[1]*r)*Math.cos(b[1]*r)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
 function buildPoly(c){const cum=[0];for(let i=1;i<c.length;i++)cum[i]=cum[i-1]+hav(c[i-1],c[i]);return{c,cum,total:cum[cum.length-1]}}
+/* ---- 실제 방위 (나침반) ---- */
+function bearing(a,b){const r=Math.PI/180,y=Math.sin((b[0]-a[0])*r)*Math.cos(b[1]*r),x=Math.cos(a[1]*r)*Math.sin(b[1]*r)-Math.sin(a[1]*r)*Math.cos(b[1]*r)*Math.cos((b[0]-a[0])*r);return(Math.atan2(y,x)/r+360)%360}
+function polyBearing(p,sKm){   // 경로상 sKm 지점의 진행 방위(도)
+  const c=p.c,cum=p.cum;let lo=0,hi=c.length-2;
+  while(lo<hi){const m=(lo+hi+1)>>1;if(cum[m]<=sKm)lo=m;else hi=m-1}
+  let j=Math.min(c.length-1,lo+1);while(j<c.length-1&&hav(c[lo],c[j])<.01)j++;   // 10 m 이상 떨어진 점과 비교
+  return bearing(c[lo],c[j]);
+}
+function noteHeading(p,lat,lon){   // GPS 위치 갱신마다 진행 방위 갱신
+  const hd=p.coords.heading,sp=p.coords.speed;
+  if(hd!=null&&isFinite(hd)&&(sp==null||sp>1.5)){S.hdgT=hd;S.hdgReal=true}
+  if(S.hdgPrev){
+    const d=hav([S.hdgPrev.lon,S.hdgPrev.lat],[lon,lat]);
+    if(d>.015){ if(!(hd!=null&&isFinite(hd)&&(sp==null||sp>1.5))){S.hdgT=bearing([S.hdgPrev.lon,S.hdgPrev.lat],[lon,lat]);S.hdgReal=true} S.hdgPrev={lat,lon} }
+  }else S.hdgPrev={lat,lon};
+}
+function headingTarget(){   // null이면 가상 시선(φ) 사용
+  if(S.mode==='gps'){
+    if(S.hdgReal&&S.hdgT!=null)return S.hdgT;
+    if(S.poly&&S.total>0)return polyBearing(S.poly,S.s);   // 아직 움직이지 않았다면 경로 방향으로 잠정 표시
+    return undefined;   // 대기 중: 방위 미확정
+  }
+  if(S.mode==='sim'&&S.poly&&S.total>0)return polyBearing(S.poly,S.s);
+  return null;
+}
 function projectOn(p,lat,lon,from,span){
   const kx=111.32*Math.cos(lat*Math.PI/180),ky=110.57;let best=1e9,bs=0,bi=from;
   const end=Math.min(p.c.length-1,from+(span||160));
@@ -795,7 +1381,7 @@ setInterval(checkSignal,1000);
 let watchId=null,lastFix=null;
 function startWatch(){
   if(watchId!=null)navigator.geolocation.clearWatch(watchId);
-  S.lastFixAt=Date.now();S.sigLost=false;
+  S.lastFixAt=Date.now();S.sigLost=false;S.hdgT=null;S.hdgReal=false;S.hdgPrev=null;
   watchId=navigator.geolocation.watchPosition(onFix,err=>{
     if(S.mode!=='gps')return;
     if(err&&err.code===1){showToast('bad','위치 권한 거부','PERMISSION DENIED · 브라우저 설정에서 허용해 주세요',4000);return}
@@ -809,6 +1395,7 @@ async function onFix(p){
   const gap=S.lastFixAt?now-S.lastFixAt:0;S.lastFixAt=now;
   if(S.sigLost){S.sigLost=false;showToast('ok','GPS 신호 재수신','SIGNAL REACQUIRED · 위치 재동기화',2500);beep(880,.08)}
   const lat=p.coords.latitude,lon=p.coords.longitude;
+  noteHeading(p,lat,lon);
   if(S.waiting){   // 목적지만 정해 둔 상태: 첫 위치가 들어오면 항로를 계산한다
     if(S.busy||now<S.retryAt)return;
     S.busy=true;showToast('ok','GPS 신호 수신','SIGNAL ACQUIRED · 항로를 계산합니다…',0);beep(880,.08);
@@ -1007,7 +1594,7 @@ function endNav(){
   if(watchId!=null){try{navigator.geolocation.clearWatch(watchId)}catch(e){}watchId=null}
   wakeOff();
   S.mode='idle';S.maneuvers=[];S.total=0;S.s=0;S.v=0;S.idx=0;S.turn=null;S.arrived=false;S.arrM=null;S.running=false;S.traffic=null;S.poly=null;
-  S.waiting=false;S.sigLost=false;S.rerouting=false;S.busy=false;S.manual=false;S.thr=0;S.dest=null;
+  S.waiting=false;S.sigLost=false;S.rerouting=false;S.busy=false;S.manual=false;S.thr=0;S.dest=null;S.hdgT=null;S.hdgReal=false;S.hdgPrev=null;
   hideToast();$('lpArr').classList.remove('on');$('ov').classList.remove('hide');
 }
 let stopTimer=null;
@@ -1070,7 +1657,7 @@ $('bSnd').onclick=()=>{
 let last=performance.now();
 function frame(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;
-  update(dt);render(dt);hud();audioUpdate();
+  update(dt);prepBodies();runJobs(5);render(dt);hud();audioUpdate();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
