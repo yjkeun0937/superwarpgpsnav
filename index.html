@@ -291,7 +291,8 @@ const LY_PER_KM=1000;  // 1 km = 1,000 광년
 /* ---------------- 상태 ---------------- */
 const S={mode:'idle',running:false,t:0,s:0,v:0,vAvg:50,total:0,maneuvers:[],idx:0,ts:10,
   w:1,warpOn:true,phi:0,turn:null,arrived:false,arrM:null,flash:0,side:1,cruise:60,snd:false,
-  traffic:null,sigLost:false,lastFixAt:0,dest:null,poly:null,pidx:0,rerouting:false,lastRe:0,waiting:false,busy:false,retryAt:0,manual:false,thr:0,neHue:220,hdgT:null,hdgD:0,hdgReal:false,hdgPrev:null};
+  traffic:null,sigLost:false,lastFixAt:0,dest:null,poly:null,pidx:0,rerouting:false,lastRe:0,waiting:false,busy:false,retryAt:0,manual:false,thr:0,neHue:220,hdgT:null,hdgD:0,hdgReal:false,hdgPrev:null,
+  curW:0,cp1:0,cp2:0,fly:null,flyNext:null,flyWait:10};
 
 /* ---------------- 천체 ---------------- */
 // [이름, 종류, 세부(문자열) 또는 옵션(객체)]  종류: earth barren gas city star hole pulsar quasar galaxy neb pneb asteroid
@@ -709,6 +710,7 @@ function genTraffic(total){
 }
 function initTrip(mode,ms,total){
   S.waiting=false;S.manual=false;S.thr=0;S.mode=mode;S.maneuvers=ms;S.total=total;S.s=0;S.idx=0;S.turn=null;S.arrived=false;S.arrM=null;
+  resetFly();S.curW=0;S.cp1=Math.random()*6.28;S.cp2=Math.random()*6.28;
   S.v=0;S.warpOn=false;S.w=Math.min(S.w,.3);S.cruise=60;S.vAvg=50;S.running=(mode==='sim');S.traffic=(mode==='sim')?genTraffic(total):null;
   $('dstGh').textContent=(Math.round(total*LY_PER_KM)>=100000)?'888,888':'88,888';
   $('lpArr').classList.remove('on');
@@ -741,8 +743,68 @@ function startTurn(m){
   if(S.mode==='sim')S.cruise=45+Math.random()*50;
 }
 
+
+/* ---------------- 도로 굽이 → 별 흐름 / 스쳐 지나가는 천체 ---------------- */
+const CURVE_GAIN=1.7;                      // 실제 방위 변화율을 화면에서 과장하는 배율
+function synCurve(s){                       // 무작위 시뮬레이션용 가상의 완만한 굽이 (rad/km)
+  const c=Math.sin(s*1.9+S.cp1)*Math.sin(s*.71+S.cp2);
+  return 4.2*Math.sign(c)*Math.max(0,Math.abs(c)-.32)/.68;
+}
+function curveStep(dt,phi0){   // 경로(GPS 위치가 맞춰진 경로)의 방위 변화로 선회율(rad/s) 계산
+  let om=0;
+  if(S.mode!=='idle'&&!S.turn&&!S.arrived&&S.v>3){
+    const m=S.maneuvers[S.idx],near=m&&Math.abs(m.at-S.s)<.12;   // 교차로 근처의 급회전은 워프 아웃 연출이 맡는다
+    let k=0;
+    if(S.poly&&S.total>0){
+      if(!near){const L=.09,a=polyBearing(S.poly,Math.max(0,S.s-L/2)),b=polyBearing(S.poly,Math.min(S.total,S.s+L/2));k=(((b-a+540)%360)-180)*Math.PI/180/L}
+    }else if(S.mode==='sim'&&!near)k=synCurve(S.s);
+    om=clamp(k*S.v/3600,-.5,.5);
+  }
+  S.curW+=(om-S.curW)*Math.min(1,dt*2.5);
+  if(!S.turn&&Math.abs(S.curW)>1e-5)S.phi+=S.curW*CURVE_GAIN*dt;
+  const dphi=S.phi-phi0,F=S.fly;
+  if(F&&dphi&&!S.turn){const c=Math.cos(dphi),sn=Math.sin(dphi),X=F.X,Z=F.Z;F.X=X*c-Z*sn;F.Z=Z*c+X*sn}   // 시선이 돌면 옆의 천체도 함께 흘러간다
+}
+function resetFly(){if(S.fly)disposeBody(S.fly.b);if(S.flyNext)disposeBody(S.flyNext);S.fly=null;S.flyNext=null;S.flyWait=8+Math.random()*8}
+function pickFly(){
+  const p=BODIES[Math.floor(Math.random()*BODIES.length)],x=p[2];
+  return makeBody(p[0],p[1],Math.floor(Math.random()*1e6),typeof x==='string'?x:'',typeof x==='object'?x:null);
+}
+function flyStep(dt,dn){
+  const F=S.fly,moving=S.mode!=='idle'&&!S.arrived&&S.v>15;
+  if(S.mode==='idle'||S.arrived){if(F||S.flyNext)resetFly();return}
+  if(F){
+    F.t+=dt;F.Z=F.Z-F.vz*dt;
+    if(S.turn||dn<DROP_D+.12)F.kill+=dt*2.5;   // 회전·워프 아웃 직전에는 서서히 사라진다
+    const x=W*.46+F.X/Math.max(.05,F.Z)*Math.sqrt(W*W+H*H)*.38;
+    if(F.kill>=1||F.Z<.22||Math.abs(x-W*.46)>W*.9+F.R*Math.sqrt(W*W+H*H)*.38/Math.max(.05,F.Z)){disposeBody(F.b);S.fly=null;S.flyWait=16+Math.random()*26}
+    return;
+  }
+  if(!moving)return;
+  S.flyWait-=dt;
+  if(S.flyWait<14&&!S.flyNext){S.flyNext=pickFly();queueBody(S.flyNext)}
+  if(S.flyWait<=0&&S.flyNext&&S.flyNext.ready&&!S.turn&&dn>DROP_D+.55){
+    const b=S.flyNext;S.flyNext=null;
+    const big=b.kind==='galaxy'||b.kind==='neb'||b.kind==='pneb',R=big?.5+Math.random()*.3:b.kind==='asteroid'?.32:.16+Math.random()*.16;
+    const side=Math.random()<.5?-1:1,X=side*(R*1.25+.45+Math.random()*.55),Y=(Math.random()-.45)*.7;
+    const dur=clamp(9.5-S.v/22,4.5,8);
+    S.fly={b,X,Y,Z:9,R,t:0,vz:(9-.25)/dur,kill:0};
+  }
+}
+function drawFly(cx0,cy0,F0){
+  const F=S.fly;if(!F)return;
+  const Z=Math.max(.05,F.Z),x=cx0+F.X/Z*F0,y=cy0-F.Y/Z*F0,r=F.R/Z*F0;
+  if(x<-r*1.5||x>W+r*1.5||y<-r*1.5||y>H+r*1.5)return;
+  const a=clamp(F.t/1.1,0,1)*(1-clamp(F.kill,0,1));
+  drawBody(F.b,x,y,r,a);
+  if(a>.2&&r>14){   // 작은 식별 표시
+    cx.save();cx.globalAlpha=a*.8;cx.font="14px 'VT323',monospace";cx.fillStyle='#33a08a';cx.textAlign='center';
+    cx.fillText(F.b.name,clamp(x,50,W-50),clamp(y+Math.min(r,H*.2)+16,40,H-40));cx.restore();
+  }
+}
+
 function update(dt){
-  S.t+=dt;
+  S.t+=dt;const phi0=S.phi;
   {const h=headingTarget();   // 나침반 방위 부드럽게 추적 (최단 회전)
    if(h!=null&&h!==undefined){const d=((h-S.hdgD+540)%360)-180;S.hdgD=((S.hdgD+d*Math.min(1,dt*4))%360+360)%360}}
   if(S.mode==='sim'&&S.running&&!S.arrived)stepSim(dt);
@@ -761,6 +823,7 @@ function update(dt){
     if(u>=1){S.turn=null;S.idx++}
   }
   const dn=S.maneuvers[S.idx]?S.maneuvers[S.idx].at-S.s:99;
+  curveStep(dt,phi0);flyStep(dt,dn);
   let on=S.warpOn;
   if(S.mode==='idle')on=true;
   else if(S.arrived||S.turn)on=false;
@@ -1042,7 +1105,7 @@ function drawBody(b,x,y,r,a){
 }
 
 function render(dt){
-  const w=S.w,cx0=W*.46,cy0=H*.40,F=Math.sqrt(W*W+H*H)*.38;
+  const w=S.w,cx0=W*.46,cy0=H*.40,F=Math.sqrt(W*W+H*H)*.38,wv=S.curW*CURVE_GAIN;
   const fx=Math.sin(S.phi),fz=Math.cos(S.phi),rx=Math.cos(S.phi),rz=-Math.sin(S.phi);
   cx.fillStyle='#000';cx.fillRect(0,0,W,H);
 
@@ -1067,7 +1130,7 @@ function render(dt){
   // 워프 스트릭
   if(w>.03){
     const vEff=S.mode==='idle'?70:S.v,sf=clamp(vEff/90,.35,1.4);
-    const zv=.015+w*w*(2+2.2*sf),len=.03+zv*.09,sh=w*.7;
+    const zv=.015+w*w*(2+2.2*sf),len=.03+zv*.09,sh=w*.7,tau=clamp(len/zv,0,.25)*3;
     const bk=[[],[],[],[]];
     for(const st of wst){
       st.x-=fx*zv*dt;st.z-=fz*zv*dt;
@@ -1079,7 +1142,7 @@ function render(dt){
       const cxv=st.x*rx+st.z*rz;
       const px=cx0+cxv/cz*F,py=cy0-st.y/cz*F;
       if(px<-60||px>W+60||py<-60||py>H+60)continue;
-      const px0=cx0+cxv/(cz+len)*F,py0=cy0-st.y/(cz+len)*F;
+      const czt=cz+len,px0=cx0+(cxv+czt*wv*tau)/czt*F,py0=cy0-st.y/czt*F;
       bk[(cz<.55?2:0)+(st.c<.5?0:1)].push(px0,py0,px,py);
     }
     const cols=['rgba(130,210,255,','rgba(235,250,255,','rgba(140,230,255,','rgba(255,255,255,'];
@@ -1094,6 +1157,7 @@ function render(dt){
     cx.fillStyle=g;cx.fillRect(0,0,W,H);
   }
 
+  drawFly(cx0,cy0,F);
   // 천체
   if(fm){const Rb=Math.min(W,H)*.34;drawBody(fm.body,cx0+ox,cy0+H*.03,Rb*sc,al*clamp(1-w*1.6,0,1))}
 
@@ -1551,7 +1615,7 @@ async function engageGPS(){
     try{setStatus('항로 계산 중…');await buildRealRoute(pos.coords.latitude,pos.coords.longitude,false)}catch(e){pos=null}
   }
   if(!pos){   // 위치를 못 받았거나 항로 계산이 안 됐으면: 목적지만 정해 두고 신호를 기다린다
-    initTrip('gps',[],0);S.waiting=true;S.retryAt=0;S.busy=false;
+    S.poly=null;initTrip('gps',[],0);S.waiting=true;S.retryAt=0;S.busy=false;
   }
   S.lastRe=Date.now();startWatch();audioInit();wakeOn();$('ov').classList.add('hide');setStatus('');
   $('bTs').textContent='×1';$('bPause').textContent='PAUSE';
@@ -1594,7 +1658,7 @@ function endNav(){
   if(watchId!=null){try{navigator.geolocation.clearWatch(watchId)}catch(e){}watchId=null}
   wakeOff();
   S.mode='idle';S.maneuvers=[];S.total=0;S.s=0;S.v=0;S.idx=0;S.turn=null;S.arrived=false;S.arrM=null;S.running=false;S.traffic=null;S.poly=null;
-  S.waiting=false;S.sigLost=false;S.rerouting=false;S.busy=false;S.manual=false;S.thr=0;S.dest=null;S.hdgT=null;S.hdgReal=false;S.hdgPrev=null;
+  S.waiting=false;S.sigLost=false;S.rerouting=false;S.busy=false;S.manual=false;S.thr=0;S.dest=null;S.hdgT=null;S.hdgReal=false;S.hdgPrev=null;resetFly();S.curW=0;
   hideToast();$('lpArr').classList.remove('on');$('ov').classList.remove('hide');
 }
 let stopTimer=null;
@@ -1638,7 +1702,7 @@ $('goSim').onclick=async()=>{
   audioInit();if(AC&&AC.state==='suspended')AC.resume();
   if(simKind==='dest'){await engageSimDest();return}
   const km=clamp(parseFloat($('inKm').value)||25,3,300);S.ts=parseInt($('inTs').value,10)||10;
-  initTrip('sim',genRoute(km),km);startSimUI();
+  S.poly=null;initTrip('sim',genRoute(km),km);startSimUI();
 };
 $('goGps').onclick=()=>{audioInit();if(AC&&AC.state==='suspended')AC.resume();engageGPS()};
 $('bSetup').onclick=()=>$('ov').classList.remove('hide');
