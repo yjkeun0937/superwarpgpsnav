@@ -106,6 +106,16 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .cfgm span{position:absolute;transform:translateX(-50%)}
 .cfgm span:before{content:"";position:absolute;left:50%;top:-6px;width:1px;height:5px;background:var(--lab)}
 .cfgb{display:flex;gap:8px;margin-top:14px}
+#cfg{z-index:30}
+.cfgfold{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;border-top:1px solid var(--line);cursor:pointer;text-align:left;margin-top:18px}
+.cfgfold span{flex:1}.cfgfold b{font:400 20px 'VT323',monospace;color:var(--amb)}.cfgfold i{font-style:normal;font-size:14px;transition:transform .15s}
+.cfgfold[aria-expanded=true] i{transform:rotate(180deg)}
+.bgrp{margin:12px 0 2px;display:flex;align-items:center;gap:8px;font:17px 'VT323',monospace;color:var(--amb);letter-spacing:.06em}
+.bgrp span{flex:1}.bgrp .bt{flex:none;font-size:14px;padding:0 8px}
+.bitem{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid rgba(23,70,61,.55);font-size:13px;cursor:pointer;user-select:none}
+.bitem input{width:20px;height:20px;accent-color:#2cf5c0;flex:none;margin:0}
+.bitem em{font-style:normal;font-size:10px;color:var(--lab);border:1px solid var(--line);padding:0 4px;margin-left:4px}
+.bitem.offi{opacity:.45}
 .ov.sheet{align-items:flex-end;background:rgba(0,5,4,.38)}
 .ov.sheet .card{max-height:64dvh}
 .cfgsec{margin:16px 0 4px;padding-top:8px;border-top:1px solid var(--line);font:18px 'VT323',monospace;letter-spacing:.08em;color:var(--fg)}
@@ -292,12 +302,19 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
     <div id="msgRows"></div>
     <div class="cfgb"><button class="bt" id="cfgReset" type="button">RESET ×1 (슬라이더 전체)</button><button class="bt act" id="cfgClose" type="button">CLOSE</button></div>
     <div class="cfgb" style="margin-top:8px"><button class="bt" id="cfgMsgReset" type="button">MESSAGE 기본값 복원</button></div>
+    <button class="cfgsec cfgfold" id="bdFold" type="button" aria-expanded="false"><span>BODIES 등장 천체 목록</span><b id="bdCnt"></b><i>▼</i></button>
+    <div id="bdBox" style="display:none">
+      <p class="sm">체크한 천체만 항로(회전·경유 지점)와 스쳐 지나가는 장면에 등장합니다. 전부 끄면 전체가 등장합니다.</p>
+      <div class="cfgb" style="margin-top:6px"><button class="bt" id="bdAll" type="button">ALL ON</button><button class="bt" id="bdNone" type="button">ALL OFF</button></div>
+      <div id="bdList"></div>
+    </div>
   </div>
 </div>
 
 <div class="ov" id="ov">
-  <div class="card">
-    <h1>WARP-NAV 9X</h1>
+  <div class="card" style="position:relative">
+    <button class="bt" id="bCfg0" type="button" style="position:absolute;top:10px;right:10px;flex:none;font-size:16px;padding:2px 10px">CONFIG</button>
+    <h1 style="padding-right:96px">WARP-NAV 9X</h1>
     <p class="sm">운전 경로를 워프 항법으로 표시합니다. 직진 구간은 워프, 회전·중간 지점에서는 워프 아웃하여 천체가 나타납니다.<br>1 km/h = 광속 1배 · 1 km = 1,000 광년</p>
     <div class="tabs"><button class="bt act" id="tSim">SIM 시뮬레이션</button><button class="bt" id="tGps">GPS 실주행</button></div>
 
@@ -340,14 +357,14 @@ const DROP_D=0.4;      // km: 워프 아웃 시작 거리
 const LY_PER_KM=1000;  // 1 km = 1,000 광년
 
 /* ---------------- 설정 (CONFIG) ---------------- */
-const CKEY='warpnav.cfg',CFG={ver:3,fly:1,st:1,fq:{fly:1,ship:1.3},msg:{}};
+const CKEY='warpnav.cfg',CFG={ver:3,fly:1,st:1,fq:{fly:1,ship:1.3},msg:{},off:{}};   // off: 등장하지 않게 끈 천체 이름
 const FQB={fly:[16,42],ship:[16,42]};   // 기준 간격(초): 실제 간격 = 기준 ÷ 배율
 const fqTxt=(k,v)=>v>0?Math.round(FQB[k][0]/v)+'~'+Math.round(FQB[k][1]/v)+' sec':'OFF';
 const MCOL={g:'#6dff9c',a:'#ffb21c',r:'#ff4136'};                 // 속도 막대와 같은 색 (초록 / 주황 / 빨강)
 const MDEF={lost:{on:1,c:'r',hz:3},route:{on:1,c:'a',hz:0},stop:{on:1,c:'g',hz:.5},arrive:{on:1,c:'g',hz:1.2},depart:{on:1,c:'g',hz:0}};   // hz: 점등 속도, 0이면 점등하지 않음
 const MNAME={lost:'GPS 신호 소실 / 대기',route:'경로 변경 (항로 이탈)',stop:'정차 중',arrive:'도착 직전',depart:'출발 (첫 이동)'};
 const MDEFAULTS=()=>JSON.parse(JSON.stringify(MDEF));
-try{const o=JSON.parse(localStorage.getItem(CKEY)||'{}');if(o.fly>=.5&&o.fly<=3)CFG.fly=o.fly;if(o.st>=.1&&o.st<=3)CFG.st=o.st;if(o.fq){if(o.fq.fly>=0&&o.fq.fly<=3)CFG.fq.fly=o.fq.fly;if(o.ver>=3&&o.fq.ship>=0&&o.fq.ship<=3)CFG.fq.ship=o.fq.ship}CFG.msg=MDEFAULTS();if(o.msg)for(const k in MDEF){const m=o.msg[k];if(m){if(m.on===0||m.on===1)CFG.msg[k].on=m.on;if(MCOL[m.c])CFG.msg[k].c=m.c;if(m.hz>=0&&m.hz<=4)CFG.msg[k].hz=m.hz}}}catch(e){}
+try{const o=JSON.parse(localStorage.getItem(CKEY)||'{}');if(o.fly>=.5&&o.fly<=3)CFG.fly=o.fly;if(o.st>=.1&&o.st<=3)CFG.st=o.st;if(o.fq){if(o.fq.fly>=0&&o.fq.fly<=3)CFG.fq.fly=o.fq.fly;if(o.ver>=3&&o.fq.ship>=0&&o.fq.ship<=3)CFG.fq.ship=o.fq.ship}CFG.msg=MDEFAULTS();if(o.msg)for(const k in MDEF){const m=o.msg[k];if(m){if(m.on===0||m.on===1)CFG.msg[k].on=m.on;if(MCOL[m.c])CFG.msg[k].c=m.c;if(m.hz>=0&&m.hz<=4)CFG.msg[k].hz=m.hz}}if(o.off&&typeof o.off==='object')for(const n in o.off)if(o.off[n])CFG.off[n]=1}catch(e){}
 if(!CFG.msg.lost)CFG.msg=MDEFAULTS();
 
 /* ---------------- 상태 ---------------- */
@@ -396,8 +413,9 @@ function makeBody(name,kind,seed,sub,o){
   if(kind==='galaxy')b.gx={spiral:{arms:2,tilt:.5,rot:-.45},grand:{arms:2,tilt:.92,rot:.2},sombrero:{arms:0,tilt:.2,rot:-.25}}[b.sub]||{arms:2,tilt:.6,rot:0};
   return b;
 }
+const enabledBodies=()=>{const l=BODIES.filter(p=>!CFG.off[p[0]]);return l.length?l:BODIES};   // 전부 꺼져 있으면 전체를 쓴다
 function assignBodies(ms,destName,seed){
-  const r=mulberry32(seed),pool=BODIES.slice();
+  const r=mulberry32(seed),pool=enabledBodies().slice();
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
   let k=0,lastKind='';
   ms.forEach((m,i)=>{
@@ -951,7 +969,7 @@ function curveStep(dt,phi0){   // 경로(GPS 위치가 맞춰진 경로)의 방�
 }
 function resetFly(){if(S.fly)disposeBody(S.fly.b);if(S.flyNext)disposeBody(S.flyNext);S.fly=null;S.flyNext=null;S.flyWait=8+Math.random()*8;S.ship=null;S.shWait=20+Math.random()*20}
 function pickFly(){
-  const p=BODIES[Math.floor(Math.random()*BODIES.length)],x=p[2];
+  const pl=enabledBodies(),p=pl[Math.floor(Math.random()*pl.length)],x=p[2];
   return makeBody(p[0],p[1],Math.floor(Math.random()*1e6),typeof x==='string'?x:'',typeof x==='object'?x:null);
 }
 function flyStep(dt,dn){
@@ -2112,7 +2130,7 @@ cfgMarks('cfgFqFM',0,3,['0','1','2','3']);cfgMarks('cfgFqSM',0,3,['0','1','2','3
 $('cfgFqF').oninput=e=>{CFG.fq.fly=e.target.value/100;S.flyWait=Math.min(S.flyWait,(16+Math.random()*26)/Math.max(.05,CFG.fq.fly));cfgSync();cfgSave()};
 $('cfgFqS').oninput=e=>{CFG.fq.ship=e.target.value/100;S.shWait=Math.min(S.shWait,(FQB.ship[0]+Math.random()*(FQB.ship[1]-FQB.ship[0]))/Math.max(.05,CFG.fq.ship));cfgSync();cfgSave()};
 $('cfgReset').onclick=()=>{CFG.fly=1;CFG.st=1;CFG.fq.fly=1;CFG.fq.ship=1.3;cfgSync();cfgSave()};
-$('bCfg').onclick=()=>{cfgSync();$('cfg').classList.remove('hide')};
+$('bCfg').onclick=$('bCfg0').onclick=()=>{cfgSync();$('cfg').classList.remove('hide')};
 $('cfgClose').onclick=()=>{$('cfg').classList.add('hide');if(S.toastTest)hideToast()};
 const MSAMPLE={lost:['GPS 신호 소실','SIGNAL LOST · 추측 항법으로 진행 중'],route:['항로 변경','COURSE CHANGE · 경로를 재설정하는 중…'],stop:['엔진 방열중','ENGINE COOLDOWN IN PROGRESS'],arrive:['궤도 진입 준비','ORBITAL INSERTION READY'],depart:['엔진 점화','DEPARTING · 항해 시작']};
 function msgBuild(){
@@ -2143,6 +2161,27 @@ function msgSync(){
 }
 function msgTest(k){const m=MSAMPLE[k];showCat(k,m[0],m[1],4000);S.toastTest=CFG.msg[k].on?true:false}
 cfgSync();msgBuild();
+/* 등장 천체 목록 */
+const BGRP=[['PLANET 행성',['earth','barren','gas','city','machine']],['STAR 항성',['star']],['EXTREME 블랙홀·펄서·퀘이사',['hole','pulsar','quasar']],['DEEP SKY 은하·성운',['galaxy','neb','pneb']],['BELT 소행성대',['asteroid']]];
+const btag=p=>{const o=typeof p[2]==='object'?p[2]:{},t=[];if(o.oring)t.push('궤도환');if(o.elev)t.push('엘리베이터');if(o.ring)t.push('고리');if(o.st)t.push('정거장');if(o.lava)t.push('용암');if(p[1]==='machine')t.push('기계도시');if(p[1]==='city')t.push('도시');return t};
+function bdBuild(){
+  $('bdList').innerHTML=BGRP.map(([nm,ks],gi)=>{const items=BODIES.filter(p=>ks.includes(p[1]));
+    return `<div class="bgrp"><span>${nm} <small data-gc="${gi}"></small></span><button class="bt" data-g="${gi}" data-v="1" type="button">ON</button><button class="bt" data-g="${gi}" data-v="0" type="button">OFF</button></div>`+
+      items.map(p=>`<label class="bitem" data-n="${p[0].replace(/"/g,'&quot;')}" data-gi="${gi}"><input type="checkbox"><span>${p[0]}${btag(p).map(t=>`<em>${t}</em>`).join('')}</span></label>`).join('')}).join('');
+  $('bdList').querySelectorAll('.bitem').forEach(el=>{const cb=el.querySelector('input');cb.onchange=()=>{if(cb.checked)delete CFG.off[el.dataset.n];else CFG.off[el.dataset.n]=1;bdSync();cfgSave()}});
+  $('bdList').querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{const ks=BGRP[+b.dataset.g][1];BODIES.filter(p=>ks.includes(p[1])).forEach(p=>{if(b.dataset.v==='1')delete CFG.off[p[0]];else CFG.off[p[0]]=1});bdSync();cfgSave()});
+  bdSync();
+}
+function bdSync(){
+  let n=0;const gc=BGRP.map(()=>[0,0]);
+  $('bdList').querySelectorAll('.bitem').forEach(el=>{const on=!CFG.off[el.dataset.n];el.querySelector('input').checked=on;el.classList.toggle('offi',!on);if(on)n++;const g=gc[+el.dataset.gi];g[1]++;if(on)g[0]++});
+  $('bdList').querySelectorAll('[data-gc]').forEach(e=>{const g=gc[+e.dataset.gc];e.textContent=g[0]+'/'+g[1]});
+  $('bdCnt').textContent=n+'/'+BODIES.length;
+}
+$('bdFold').onclick=()=>{const o=$('bdFold').getAttribute('aria-expanded')!=='true';$('bdFold').setAttribute('aria-expanded',o);$('bdBox').style.display=o?'block':'none';if(o)$('bdFold').scrollIntoView({block:'start'})};
+$('bdAll').onclick=()=>{CFG.off={};bdSync();cfgSave()};
+$('bdNone').onclick=()=>{BODIES.forEach(p=>CFG.off[p[0]]=1);bdSync();cfgSave()};
+bdBuild();
 $('cfgMsgReset').onclick=()=>{CFG.msg=MDEFAULTS();msgSync();cfgSave()};
 
 /* ---------------- 루프 ---------------- */
