@@ -28,7 +28,9 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 #lpRe{display:none}#lpRe.on{display:inline-block}
 @keyframes bl{50%{opacity:.25}}
 #hdg.est{opacity:.5}
-#stardate{font:14px 'VT323','Nanum Gothic Coding',monospace;color:var(--lab);text-shadow:0 1px 3px #000;white-space:nowrap}
+#bFs{position:fixed;z-index:40;top:max(4px,env(safe-area-inset-top));right:max(4px,env(safe-area-inset-right));width:28px;height:28px;padding:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);color:var(--lab);border:1px solid var(--line);cursor:pointer;-webkit-tap-highlight-color:transparent}
+#bFs[hidden]{display:none}#bFs:active{background:var(--fg);color:#021}
+#stardate{margin-right:34px;font:14px 'VT323','Nanum Gothic Coding',monospace;color:var(--lab);text-shadow:0 1px 3px #000;white-space:nowrap}
 #nav{display:flex;gap:10px;align-items:center;margin:10px 84px 0 10px;color:var(--amb)}
 #nav svg{width:58px;height:58px;flex:none;color:var(--amb);filter:drop-shadow(0 0 5px #ffb21caa)}
 #nav .tx{min-width:0}
@@ -129,7 +131,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .mrow .cfgh b{font-size:22px}
 .mrow .rng{height:26px}
 /* 스로틀 레버 (시뮬레이션) */
-#thr{position:absolute;left:8px;top:176px;bottom:calc(var(--bh,209px) + 14px);width:54px;display:none;flex-direction:column;align-items:center;gap:5px;pointer-events:none}
+#thr{position:absolute;left:8px;top:157px;bottom:calc(var(--bh,209px) + 14px);width:54px;display:none;flex-direction:column;align-items:center;gap:5px;pointer-events:none}
 #thr.on{display:flex}
 #thr .tl{font:15px 'VT323','Nanum Gothic Coding',monospace;color:var(--lab);text-shadow:0 1px 3px #000;line-height:1}
 #thrV{font:22px 'VT323','Nanum Gothic Coding',monospace;color:var(--fg);text-shadow:var(--tsh);line-height:1}
@@ -197,6 +199,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .sd{display:inline-flex;align-items:flex-end;gap:calc(var(--sh)*.07);height:var(--sh);color:var(--zc,var(--fg))}
 .sd svg{height:100%;width:auto;display:block;overflow:visible}
 .sd .gh polygon,.sd .gh circle{fill:rgba(20,70,60,.75)}
+.sd .lt{transform-box:fill-box}
 .sd .lt{fill:currentColor;opacity:0}.sd .lt.on{opacity:1}
 .sd .lg{filter:drop-shadow(0 0 3px currentColor)}
 /* 언어별 글자 크기 보정: VT323(영문)은 대문자 높이가 em의 .56, 나눔고딕코딩 한글은 .91 → 한글이 훨씬 커 보인다.
@@ -238,7 +241,8 @@ html[lang=en] #toast b{font-size:30px}
   <canvas id="cv"></canvas>
   <div class="shade"></div>
   <div id="toast"><b id="toastT"></b><span id="toastS"></span></div>
-  <div id="hud">
+  <button id="bFs" type="button" aria-label="전체 화면" data-en-aria="Fullscreen" hidden><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"><g id="fsIn"><path d="M3 9V3h6M15 3h6v6M21 15v6h-6M9 21H3v-6"/></g><g id="fsOut" style="display:none"><path d="M9 3v6H3M21 9h-6V3M15 21v-6h6M3 15h6v6"/></g></svg></button>
+<div id="hud">
     <div id="top">
       <div class="lamprow">
         <div class="lamps">
@@ -1621,8 +1625,8 @@ mkBar('enBar',16);const enSeg=[...$('enBar').children];
   const g=$('dialRot'),NS='http://www.w3.org/2000/svg';
   for(let i=0;i<12;i++){const l=document.createElementNS(NS,'line');const a=i*30*Math.PI/180,r1=27,r2=i%3?23.5:20;
     l.setAttribute('x1',30+Math.sin(a)*r1);l.setAttribute('y1',30-Math.cos(a)*r1);l.setAttribute('x2',30+Math.sin(a)*r2);l.setAttribute('y2',30-Math.cos(a)*r2);
-    l.setAttribute('stroke','#33a08a');l.setAttribute('stroke-width',i%3?1:2);g.appendChild(l)}
-  const t=document.createElementNS(NS,'text');t.setAttribute('x',30);t.setAttribute('y',17);t.setAttribute('fill','#7dffd8');t.setAttribute('font-size','9');t.setAttribute('text-anchor','middle');t.setAttribute('font-family','VT323,monospace');t.textContent='N';g.appendChild(t);
+    l.setAttribute('stroke',i===0?'#ff4136':'#33a08a');l.setAttribute('stroke-width',i===0?3:i%3?1:2);g.appendChild(l)}
+  const t=document.createElementNS(NS,'text');t.setAttribute('x',30);t.setAttribute('y',19);t.setAttribute('fill','#ff4136');t.setAttribute('stroke','#ff4136');t.setAttribute('stroke-width','.7');t.setAttribute('font-size','13.5');t.setAttribute('text-anchor','middle');t.setAttribute('font-family','VT323,monospace');t.textContent='N';g.appendChild(t);
 })();
 
 /* ---------------- 7-세그먼트 숫자 ---------------- */
@@ -1633,7 +1637,7 @@ function sdInit(id,pat){
   const el=$(id);if(el._p===pat)return;el._p=pat;el._t=null;
   const ps=Object.keys(SD_SEG).map(k=>`<polygon data-k="${k}" points="${sdPoly(...SD_SEG[k])}"/>`).join('');
   el.innerHTML=[...pat].map(c=>c==='8'?`<svg viewBox="0 0 58 92"><g class="gh" transform="translate(7 0) skewX(-5)">${ps}</g><g class="lg" transform="translate(7 0) skewX(-5)">${ps.replace(/<polygon/g,'<polygon class="lt"')}</g></svg>`
-    :c===','?`<svg viewBox="0 0 16 92"><g class="gh"><circle cx="7" cy="85" r="4.6"/></g><g class="lg"><circle class="lt" cx="7" cy="85" r="4.6"/></g></svg>`
+    :c===','?`<svg viewBox="0 0 16 92"><g class="gh"><circle cx="8" cy="84" r="5.4"/><polygon points="12.4,86.5 13.2,89 6.2,99.5 1.8,97.5 7,90"/></g><g class="lg"><circle class="lt" cx="8" cy="84" r="5.4"/><polygon class="lt" points="12.4,86.5 13.2,89 6.2,99.5 1.8,97.5 7,90"/></g></svg>`
     :`<svg viewBox="0 0 18 92"><g class="gh"><circle cx="9" cy="30" r="4.6"/><circle cx="9" cy="62" r="4.6"/></g><g class="lg"><circle class="lt" cx="9" cy="30" r="4.6"/><circle class="lt" cx="9" cy="62" r="4.6"/></g></svg>`).join('');
   el._sv=[...el.children];
 }
@@ -2334,6 +2338,18 @@ function applyLang(){
 function setLang(l){CFG.lang=l;cfgSave();applyLang()}
 $('lKo').onclick=()=>setLang('ko');$('lEn').onclick=()=>setLang('en');
 applyLang();
+
+
+/* ---------------- 전체 화면 ---------------- */
+(function(){
+  const b=$('bFs'),de=document.documentElement,req=de.requestFullscreen||de.webkitRequestFullscreen;
+  if(!req||document.fullscreenEnabled===false)return;   // 지원하지 않는 브라우저(예: iPhone Safari)에서는 버튼을 숨긴다
+  b.hidden=false;
+  const fsEl=()=>document.fullscreenElement||document.webkitFullscreenElement;
+  const sync=()=>{const on=!!fsEl();$('fsIn').style.display=on?'none':'';$('fsOut').style.display=on?'':'none';b.setAttribute('aria-label',on?L('전체 화면 해제','Exit fullscreen'):L('전체 화면','Fullscreen'))};
+  b.onclick=()=>{try{if(fsEl()){(document.exitFullscreen||document.webkitExitFullscreen).call(document)}else{const r=req.call(de);if(r&&r.catch)r.catch(()=>{})}}catch(e){}};
+  document.addEventListener('fullscreenchange',sync);document.addEventListener('webkitfullscreenchange',sync);sync();
+})();
 
 /* ---------------- 루프 ---------------- */
 let last=performance.now();
