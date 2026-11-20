@@ -304,7 +304,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
     <div class="pane on" id="pSim">
       <div class="fld"><label>경로 종류</label><div class="tabs" style="margin:0"><button class="bt act" id="mRand" type="button">임의 경로</button><button class="bt" id="mDest" type="button">목적지 지정</button></div></div>
       <div id="sRand"><div class="fld"><label>총 항로 길이 (km)</label><input id="inKm" type="number" min="3" max="300" value="25"></div>
-        <div class="fld"><label>중간 지점 수 (워프 아웃해서 천체를 만나는 지점)</label><div class="srow" style="align-items:center"><input id="inWp" type="number" min="0" max="60" value="3" disabled><label class="chk" style="display:flex;align-items:center;gap:6px;flex:none;margin:0;font-size:14px;color:var(--fg);cursor:pointer"><input type="checkbox" id="wpAuto" checked style="width:22px;height:22px;flex:none;accent-color:#2cf5c0;padding:0"> 임의</label></div></div></div>
+        <div class="fld"><label>중간 지점 수 (회전·경유 포함, 워프 아웃하는 횟수)</label><div class="srow" style="align-items:center"><input id="inWp" type="number" min="0" max="60" value="3" disabled><label class="chk" style="display:flex;align-items:center;gap:6px;flex:none;margin:0;font-size:14px;color:var(--fg);cursor:pointer"><input type="checkbox" id="wpAuto" checked style="width:22px;height:22px;flex:none;accent-color:#2cf5c0;padding:0"> 임의</label></div></div></div>
       <div id="sDest" style="display:none">
         <div class="fld"><label>출발지 (비우면 현재 위치)</label><div class="srow"><input id="sorg" type="text" placeholder="비우면 현재 위치" enterkeyhint="search" autocomplete="off"><button class="bt" id="bFindO" type="button">검색</button></div></div>
         <div class="fld" id="sorgFld" style="display:none"><label id="sorgLb"></label><div class="hist cand" id="sorgList"></div></div>
@@ -340,14 +340,14 @@ const DROP_D=0.4;      // km: 워프 아웃 시작 거리
 const LY_PER_KM=1000;  // 1 km = 1,000 광년
 
 /* ---------------- 설정 (CONFIG) ---------------- */
-const CKEY='warpnav.cfg',CFG={ver:2,fly:1,st:1,fq:{fly:1,ship:2},msg:{}};
-const FQB={fly:[16,42],ship:[28,62]};   // 기준 간격(초): 실제 간격 = 기준 ÷ 배율
+const CKEY='warpnav.cfg',CFG={ver:3,fly:1,st:1,fq:{fly:1,ship:1.3},msg:{}};
+const FQB={fly:[16,42],ship:[16,42]};   // 기준 간격(초): 실제 간격 = 기준 ÷ 배율
 const fqTxt=(k,v)=>v>0?Math.round(FQB[k][0]/v)+'~'+Math.round(FQB[k][1]/v)+' sec':'OFF';
 const MCOL={g:'#6dff9c',a:'#ffb21c',r:'#ff4136'};                 // 속도 막대와 같은 색 (초록 / 주황 / 빨강)
 const MDEF={lost:{on:1,c:'r',hz:3},route:{on:1,c:'a',hz:0},stop:{on:1,c:'g',hz:.5},arrive:{on:1,c:'g',hz:1.2},depart:{on:1,c:'g',hz:0}};   // hz: 점등 속도, 0이면 점등하지 않음
 const MNAME={lost:'GPS 신호 소실 / 대기',route:'경로 변경 (항로 이탈)',stop:'정차 중',arrive:'도착 직전',depart:'출발 (첫 이동)'};
 const MDEFAULTS=()=>JSON.parse(JSON.stringify(MDEF));
-try{const o=JSON.parse(localStorage.getItem(CKEY)||'{}');if(o.fly>=.5&&o.fly<=3)CFG.fly=o.fly;if(o.st>=.1&&o.st<=3)CFG.st=o.st;if(o.fq){if(o.fq.fly>=0&&o.fq.fly<=3)CFG.fq.fly=o.fq.fly;if(o.ver>=2&&o.fq.ship>=0&&o.fq.ship<=3)CFG.fq.ship=o.fq.ship}CFG.msg=MDEFAULTS();if(o.msg)for(const k in MDEF){const m=o.msg[k];if(m){if(m.on===0||m.on===1)CFG.msg[k].on=m.on;if(MCOL[m.c])CFG.msg[k].c=m.c;if(m.hz>=0&&m.hz<=4)CFG.msg[k].hz=m.hz}}}catch(e){}
+try{const o=JSON.parse(localStorage.getItem(CKEY)||'{}');if(o.fly>=.5&&o.fly<=3)CFG.fly=o.fly;if(o.st>=.1&&o.st<=3)CFG.st=o.st;if(o.fq){if(o.fq.fly>=0&&o.fq.fly<=3)CFG.fq.fly=o.fq.fly;if(o.ver>=3&&o.fq.ship>=0&&o.fq.ship<=3)CFG.fq.ship=o.fq.ship}CFG.msg=MDEFAULTS();if(o.msg)for(const k in MDEF){const m=o.msg[k];if(m){if(m.on===0||m.on===1)CFG.msg[k].on=m.on;if(MCOL[m.c])CFG.msg[k].c=m.c;if(m.hz>=0&&m.hz<=4)CFG.msg[k].hz=m.hz}}}catch(e){}
 if(!CFG.msg.lost)CFG.msg=MDEFAULTS();
 
 /* ---------------- 상태 ---------------- */
@@ -749,20 +749,18 @@ function drawStation(st,sp,r,t){
 function genRoute(total,wpN){   // wpN: 중간 지점 개수 (null이면 임의)
   const seed=(Date.now()&0xffffff),rnd=mulberry32(seed),ms=[];
   let s=0;
-  for(;;){
+  const pickTurn=()=>{const r=rnd();return r<.36?['R',90]:r<.72?['L',-90]:r<.8?['U',180]:r<.9?['SR',45]:['SL',-45]};
+  if(wpN==null)for(;;){
     s+=.9+rnd()*2.4; if(s>total-.8)break;
-    const r=rnd();let t,a;
-    if(r<.36){t='R';a=90}else if(r<.72){t='L';a=-90}else if(r<.8){t='U';a=180}else if(r<.9){t='SR';a=45}else{t='SL';a=-45}
-    ms.push({at:s,type:t,ang:a});
+    const q=pickTurn();ms.push({at:s,type:q[0],ang:q[1]});
   }
   if(wpN==null){
     for(let w=7;w<total-1;w+=7+rnd()*3){if(!ms.some(m=>Math.abs(m.at-w)<.7))ms.push({at:w,type:'WP',ang:0})}
-  }else{   // 지정한 개수만큼 거의 균등하게 배치 (겹치는 회전 지점은 제거)
+  }else{   // 지정한 개수 = 워프 아웃하는 모든 중간 지점(회전 포함)의 총 개수. 거의 균등하게 배치
     const n=Math.min(wpN,Math.max(0,Math.floor((total-1)/.9))),gap=total/(n+1);
     for(let i=1;i<=n;i++){
       const at=clamp(gap*i+(rnd()-.5)*gap*.25,.8,total-.8);
-      for(let k=ms.length-1;k>=0;k--)if(Math.abs(ms[k].at-at)<.7)ms.splice(k,1);
-      ms.push({at,type:'WP',ang:0});
+      if(rnd()<.3)ms.push({at,type:'WP',ang:0});else{const q=pickTurn();ms.push({at,type:q[0],ang:q[1]})}
     }
   }
   ms.push({at:total,type:'ARR',ang:0});
@@ -856,7 +854,7 @@ function flyStep(dt,dn){
   if(!moving||CFG.fq.fly<=0)return;
   S.flyWait-=dt;
   if(S.flyWait<14&&!S.flyNext){S.flyNext=pickFly();queueBody(S.flyNext)}
-  if(S.flyWait<=0&&S.flyNext&&S.flyNext.ready&&!S.ship&&!S.turn&&dn>DROP_D+.55){
+  if(S.flyWait<=0&&S.flyNext&&S.flyNext.ready&&!S.turn&&dn>DROP_D+.55){
     const b=S.flyNext;S.flyNext=null;
     const big=b.kind==='galaxy'||b.kind==='neb'||b.kind==='pneb',R=big?.5+Math.random()*.3:b.kind==='asteroid'?.32:.16+Math.random()*.16;
     const side=Math.random()<.5?-1:1,X=side*(R*1.25+.45+Math.random()*.55),Y=(Math.random()-.45)*.7;
@@ -941,12 +939,12 @@ function shipStep(dt,dn){
     if(S.v<5)sh.kill+=dt*.4;
     if(S.turn||dn<DROP_D+.12)sh.kill+=dt*2.5;
     const sx=Math.abs(sh.X/Math.max(.05,sh.Z))*Math.sqrt(W*W+H*H)*.38;
-    if(sh.kill>=1||sh.t>45||(sh.same&&sh.Z>14)||(!sh.same&&(sh.Z<.3+sh.m.L*.5||sx>W*1.1+sh.m.L/Math.max(.2,sh.Z)*400))){S.ship=null;S.shWait=(28+Math.random()*34)/Math.max(.05,CFG.fq.ship)}
+    if(sh.kill>=1||sh.t>45||(sh.same&&sh.Z>14)||(!sh.same&&(sh.Z<.3+sh.m.L*.5||sx>W*1.1+sh.m.L/Math.max(.2,sh.Z)*400))){S.ship=null;S.shWait=(FQB.ship[0]+Math.random()*(FQB.ship[1]-FQB.ship[0]))/Math.max(.05,CFG.fq.ship)}
     return;
   }
   if(S.v<=15||CFG.fq.ship<=0)return;
   S.shWait-=dt;
-  if(S.shWait<=0&&!S.fly&&!S.turn&&dn>DROP_D+.55)shipSpawn();
+  if(S.shWait<=0&&!S.turn&&dn>DROP_D+.55)shipSpawn();
 }
 function curvK(){return clamp(S.curW*CURVE_GAIN/(FLY_K*Math.max(S.v,20)),-.12,.12)}   // 시선 방향 단위 길이당 도로의 굽이 (우회전 +)
 function drawShip(cx0,cy0,F0){
@@ -956,8 +954,8 @@ function drawShip(cx0,cy0,F0){
   const a=clamp(sh.t/.7,0,1)*(1-clamp(sh.kill,0,1));
   const sn=Math.sin(sh.yaw),cs=Math.cos(sh.yaw),sr=Math.sin(sh.roll),cr=Math.cos(sh.roll);
   const tf=p=>{const x=p[0]*L,y=p[1]*L,z=p[2]*L,x1=x*cr-y*sr,y1=x*sr+y*cr;return[x1*cs+z*sn,y1,-x1*sn+z*cs]};   // 선체 → 카메라 방향(이동 전)
-  const K=curvK();
-  const scr=(X,Y,Z)=>{Z=Math.max(NEAR,Z);X+=.5*K*Z*Z;return[cx0+X/Z*F0,cy0-Y/Z*F0,Z]};   // 굽은 도로를 따라 같은 쪽으로 휘어 보인다
+  const K=curvK()*.35,BZC=3;   // 휘는 정도는 줄이고, 먼 곳에서는 직선(소실점 방향)에 가까워지게 한다
+  const scr=(X,Y,Z)=>{Z=Math.max(NEAR,Z);X+=Z<BZC?.5*K*Z*Z:.5*K*BZC*BZC+K*BZC*(Z-BZC);return[cx0+X/Z*F0,cy0-Y/Z*F0,Z]};   // 굽은 도로를 따라 같은 쪽으로 휘어 보인다
   const cxp=cx0+sh.X/sh.Z*F0;
   if(Math.abs(cxp-cx0)>W*1.4+L/sh.Z*F0*2)return;
   cx.save();cx.globalAlpha=a;
@@ -1990,8 +1988,8 @@ $('cfgFly').oninput=e=>{CFG.fly=e.target.value/100;cfgSync();cfgSave()};
 $('cfgSt').oninput=e=>{CFG.st=e.target.value/100;cfgSync();cfgSave()};
 cfgMarks('cfgFqFM',0,3,['0','1','2','3']);cfgMarks('cfgFqSM',0,3,['0','1','2','3']);
 $('cfgFqF').oninput=e=>{CFG.fq.fly=e.target.value/100;S.flyWait=Math.min(S.flyWait,(16+Math.random()*26)/Math.max(.05,CFG.fq.fly));cfgSync();cfgSave()};
-$('cfgFqS').oninput=e=>{CFG.fq.ship=e.target.value/100;S.shWait=Math.min(S.shWait,(28+Math.random()*34)/Math.max(.05,CFG.fq.ship));cfgSync();cfgSave()};
-$('cfgReset').onclick=()=>{CFG.fly=1;CFG.st=1;CFG.fq.fly=1;CFG.fq.ship=2;cfgSync();cfgSave()};
+$('cfgFqS').oninput=e=>{CFG.fq.ship=e.target.value/100;S.shWait=Math.min(S.shWait,(FQB.ship[0]+Math.random()*(FQB.ship[1]-FQB.ship[0]))/Math.max(.05,CFG.fq.ship));cfgSync();cfgSave()};
+$('cfgReset').onclick=()=>{CFG.fly=1;CFG.st=1;CFG.fq.fly=1;CFG.fq.ship=1.3;cfgSync();cfgSave()};
 $('bCfg').onclick=()=>{cfgSync();$('cfg').classList.remove('hide')};
 $('cfgClose').onclick=()=>{$('cfg').classList.add('hide');if(S.toastTest)hideToast()};
 const MSAMPLE={lost:['GPS 신호 소실','SIGNAL LOST · 추측 항법으로 진행 중'],route:['항로 변경','COURSE CHANGE · 경로를 재설정하는 중…'],stop:['엔진 방열중','ENGINE COOLDOWN IN PROGRESS'],arrive:['궤도 진입 준비','ORBITAL INSERTION READY'],depart:['엔진 점화','DEPARTING · 항해 시작']};
