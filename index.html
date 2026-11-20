@@ -1102,14 +1102,15 @@ function shPickN(max){const w=SHW.slice(0,clamp(max,1,6)),t=w.reduce((a,b)=>a+b,
 const shInterval=()=>(FQB.ship[0]+Math.random()*(FQB.ship[1]-FQB.ship[0]))/Math.max(.05,CFG.fq.ship);
 function shipSpawn(bodyUp){
   const ci=(()=>{const q=Math.random();return q<.34?0:q<.66?1:q<.9?2:3})(),C=SHIPCLS[ci],same=Math.random()<(ci>=2?.25:.5);   // 느린 대형·특대형은 엇갈리는 방향이 3:1
-  const m=genShip(ci,Math.floor(Math.random()*1e6)),far=bodyUp||S.t-(S.turnAt==null?-99:S.turnAt)<5;   // 천체가 화면에 나타난 뒤, 그리고 회전이 끝난 뒤 5초 안에 나오는 우주선은 천체·우리 우주선에서 아주 멀리서 시작한다
+  const m=genShip(ci,Math.floor(Math.random()*1e6)),far=bodyUp||S.t-(S.turnAt==null?-99:S.turnAt)<5;   // 천체가 화면에 나타난 뒤, 그리고 회전이 끝난 뒤 5초 안에 나오는 우주선은 항로 중심(우리 우주선·천체)에서 옆으로(√(x²+y²)) 멀리 떨어져 나타난다. 진행 방향(z) 위치는 평소와 같다
   let X=0,Y=0;
+  const FARR=1.2*Math.min(W,H)*.34*(same?11:13)/(Math.sqrt(W*W+H*H)*.38)/.8;   // 옆으로 떨어진 거리: 화면에서 천체(반지름 .34·짧은 변) 밖에 놓이도록
   for(let k=0;k<12;k++){   // 같은 방향의 다른 우주선과 항로(차선)가 너무 가까우면 다시 뽑는다
-    const th=Math.random()*6.283,rho=.55+C.L*.9+Math.random()*.8;X=rho*Math.cos(th);Y=rho*Math.sin(th)*.8;
+    const th=Math.random()*6.283,rho=far?FARR+Math.random()*2.5:.55+C.L*.9+Math.random()*.8;X=rho*Math.cos(th);Y=rho*Math.sin(th)*.8;
     if(!S.ships.some(o=>o.same===same&&Math.hypot(o.X-X,o.Y-Y)<(o.m.L+C.L)*.6+.3))break;
   }
   const spd=(same?C.sp:C.op)*(.85+Math.random()*.3);
-  S.ships.push({m,X,Y,Z:same?(far?6:-.2):(far?32:13),yaw:same?0:Math.PI,roll:(Math.random()-.5)*.5,spd,same,t:0,kill:0,fin:far?(same?3:1.2):(same?.7:.3),
+  S.ships.push({m,X,Y,Z:same?-.2:13,yaw:same?0:Math.PI,roll:(Math.random()-.5)*.5,spd,same,t:0,kill:0,fin:same?.7:.3,
     tl:Math.min(9,C.L*(7+Math.random()*8))});
 }
 function shipStep(dt,dn){
