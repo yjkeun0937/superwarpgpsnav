@@ -93,7 +93,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 #bStop:active{background:var(--red)}#bStop:active b,#bStop:active em{color:#1a0200;text-shadow:none}
 #bStop.arm{animation:stopbl .5s steps(2) infinite}
 @keyframes stopbl{50%{background:var(--red)}}#bStop.arm:after{content:"";position:absolute;inset:0}
-.rng{-webkit-appearance:none;appearance:none;display:block;width:100%;height:30px;margin:2px 0;padding:0;border:0;background:transparent;outline:none;touch-action:pan-y}
+.rng{-webkit-appearance:none;appearance:none;display:block;width:66%;margin-left:34%!important;height:30px;margin:2px 0;padding:0;border:0;background:transparent;outline:none;touch-action:pan-y}
 .rng::-webkit-slider-runnable-track{height:10px;background:repeating-linear-gradient(90deg,#1a5f52 0 5px,#04120f 5px 8px);border:1px solid var(--line)}
 .rng::-moz-range-track{height:8px;background:repeating-linear-gradient(90deg,#1a5f52 0 5px,#04120f 5px 8px);border:1px solid var(--line)}
 .rng::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:28px;margin-top:-10px;border-radius:2px;border:2px solid #101010;background:linear-gradient(#f0f0f0,#a8a8a8 45%,#5c5c5c);box-shadow:0 2px 5px #000}
@@ -102,7 +102,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .cfgh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .cfgh label{font-size:12px;color:var(--lab)}
 .cfgh b{font:400 28px 'VT323',monospace;color:var(--amb);text-shadow:0 0 8px #ffb21c88;line-height:1}
-.cfgm{position:relative;height:14px;margin:-2px 8px 0;font:13px 'VT323',monospace;color:var(--lab)}
+.cfgm{position:relative;height:14px;margin:-2px 8px 0 calc(34% + 8px);width:calc(66% - 16px);font:13px 'VT323',monospace;color:var(--lab)}
 .cfgm span{position:absolute;transform:translateX(-50%)}
 .cfgm span:before{content:"";position:absolute;left:50%;top:-6px;width:1px;height:5px;background:var(--lab)}
 .cfgb{display:flex;gap:8px;margin-top:14px}
@@ -283,9 +283,14 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
       <input class="rng" id="cfgFly" type="range" min="50" max="300" step="5" value="100"><div class="cfgm" id="cfgFlyM"></div></div>
     <div class="cfgrow"><div class="cfgh"><label>워프 줄기 길이</label><b id="cfgStV">×1.00</b></div>
       <input class="rng" id="cfgSt" type="range" min="10" max="300" step="5" value="100"><div class="cfgm" id="cfgStM"></div></div>
+    <div class="cfgsec">FREQUENCY</div>
+    <div class="cfgrow"><div class="cfgh"><label>천체 통과 빈도</label><b id="cfgFqFV">×1.00</b></div>
+      <input class="rng" id="cfgFqF" type="range" min="0" max="300" step="5" value="100"><div class="cfgm" id="cfgFqFM"></div></div>
+    <div class="cfgrow"><div class="cfgh"><label>다른 우주선 빈도</label><b id="cfgFqSV">×1.00</b></div>
+      <input class="rng" id="cfgFqS" type="range" min="0" max="300" step="5" value="100"><div class="cfgm" id="cfgFqSM"></div></div>
     <div class="cfgsec">MESSAGES</div>
     <div id="msgRows"></div>
-    <div class="cfgb"><button class="bt" id="cfgReset" type="button">RESET ×1</button><button class="bt act" id="cfgClose" type="button">CLOSE</button></div>
+    <div class="cfgb"><button class="bt" id="cfgReset" type="button">RESET ×1 (슬라이더 전체)</button><button class="bt act" id="cfgClose" type="button">CLOSE</button></div>
     <div class="cfgb" style="margin-top:8px"><button class="bt" id="cfgMsgReset" type="button">MESSAGE 기본값 복원</button></div>
   </div>
 </div>
@@ -334,19 +339,19 @@ const DROP_D=0.4;      // km: 워프 아웃 시작 거리
 const LY_PER_KM=1000;  // 1 km = 1,000 광년
 
 /* ---------------- 설정 (CONFIG) ---------------- */
-const CKEY='warpnav.cfg',CFG={fly:1,st:1,msg:{}};
+const CKEY='warpnav.cfg',CFG={fly:1,st:1,fq:{fly:1,ship:1},msg:{}};
 const MCOL={g:'#6dff9c',a:'#ffb21c',r:'#ff4136'};                 // 속도 막대와 같은 색 (초록 / 주황 / 빨강)
-const MDEF={lost:{on:1,c:'r',hz:3},route:{on:1,c:'a',hz:0},stop:{on:1,c:'g',hz:.5}};   // hz: 점등 속도, 0이면 점등하지 않음
-const MNAME={lost:'GPS 신호 소실 / 대기',route:'경로 변경 (항로 이탈)',stop:'정차 중'};
+const MDEF={lost:{on:1,c:'r',hz:3},route:{on:1,c:'a',hz:0},stop:{on:1,c:'g',hz:.5},arrive:{on:1,c:'g',hz:1.2},depart:{on:1,c:'g',hz:0}};   // hz: 점등 속도, 0이면 점등하지 않음
+const MNAME={lost:'GPS 신호 소실 / 대기',route:'경로 변경 (항로 이탈)',stop:'정차 중',arrive:'도착 직전',depart:'출발 (첫 이동)'};
 const MDEFAULTS=()=>JSON.parse(JSON.stringify(MDEF));
-try{const o=JSON.parse(localStorage.getItem(CKEY)||'{}');if(o.fly>=.5&&o.fly<=3)CFG.fly=o.fly;if(o.st>=.1&&o.st<=3)CFG.st=o.st;CFG.msg=MDEFAULTS();if(o.msg)for(const k in MDEF){const m=o.msg[k];if(m){if(m.on===0||m.on===1)CFG.msg[k].on=m.on;if(MCOL[m.c])CFG.msg[k].c=m.c;if(m.hz>=0&&m.hz<=4)CFG.msg[k].hz=m.hz}}}catch(e){}
+try{const o=JSON.parse(localStorage.getItem(CKEY)||'{}');if(o.fly>=.5&&o.fly<=3)CFG.fly=o.fly;if(o.st>=.1&&o.st<=3)CFG.st=o.st;if(o.fq){if(o.fq.fly>=0&&o.fq.fly<=3)CFG.fq.fly=o.fq.fly;if(o.fq.ship>=0&&o.fq.ship<=3)CFG.fq.ship=o.fq.ship}CFG.msg=MDEFAULTS();if(o.msg)for(const k in MDEF){const m=o.msg[k];if(m){if(m.on===0||m.on===1)CFG.msg[k].on=m.on;if(MCOL[m.c])CFG.msg[k].c=m.c;if(m.hz>=0&&m.hz<=4)CFG.msg[k].hz=m.hz}}}catch(e){}
 if(!CFG.msg.lost)CFG.msg=MDEFAULTS();
 
 /* ---------------- 상태 ---------------- */
 const S={mode:'idle',running:false,t:0,s:0,v:0,vAvg:50,total:0,maneuvers:[],idx:0,ts:10,
   w:1,warpOn:true,phi:0,turn:null,arrived:false,arrM:null,flash:0,side:1,cruise:60,snd:false,
   traffic:null,sigLost:false,lastFixAt:0,dest:null,poly:null,pidx:0,rerouting:false,lastRe:0,waiting:false,busy:false,retryAt:0,manual:false,thr:0,neHue:220,hdgT:null,hdgD:0,hdgReal:false,hdgPrev:null,
-  curW:0,cp1:0,cp2:0,fly:null,flyNext:null,flyWait:10};
+  curW:0,cp1:0,cp2:0,fly:null,flyNext:null,flyWait:10,ship:null,shWait:25,departed:false,arrNote:false,toastTest:false};
 
 /* ---------------- 천체 ---------------- */
 // [이름, 종류, 세부(문자열) 또는 옵션(객체)]  종류: earth barren gas city star hole pulsar quasar galaxy neb pneb asteroid
@@ -764,7 +769,7 @@ function genTraffic(total){
 }
 function initTrip(mode,ms,total){
   S.waiting=false;S.manual=false;S.thr=0;S.mode=mode;S.maneuvers=ms;S.total=total;S.s=0;S.idx=0;S.turn=null;S.arrived=false;S.arrM=null;
-  resetFly();S.curW=0;S.cp1=Math.random()*6.28;S.cp2=Math.random()*6.28;
+  resetFly();S.curW=0;S.departed=false;S.arrNote=false;S.cp1=Math.random()*6.28;S.cp2=Math.random()*6.28;
   S.v=0;S.warpOn=false;S.w=Math.min(S.w,.3);S.cruise=60;S.vAvg=50;S.running=(mode==='sim');S.traffic=(mode==='sim')?genTraffic(total):null;
   $('dstGh').textContent=(Math.round(total*LY_PER_KM)>=100000)?'888,888':'88,888';
   $('lpArr').classList.remove('on');
@@ -819,8 +824,9 @@ function curveStep(dt,phi0){   // 경로(GPS 위치가 맞춰진 경로)의 방�
   if(!S.turn&&Math.abs(S.curW)>1e-5)S.phi+=S.curW*CURVE_GAIN*dt;
   const dphi=S.phi-phi0,F=S.fly;
   if(F&&dphi&&!S.turn){const c=Math.cos(dphi),sn=Math.sin(dphi),X=F.X,Z=F.Z;F.X=X*c-Z*sn;F.Z=Z*c+X*sn}   // 시선이 돌면 옆의 천체도 함께 흘러간다
+  const SH=S.ship;if(SH&&dphi&&!S.turn){const c=Math.cos(dphi),sn=Math.sin(dphi),X=SH.X,Z=SH.Z;SH.X=X*c-Z*sn;SH.Z=Z*c+X*sn;SH.yaw-=dphi}
 }
-function resetFly(){if(S.fly)disposeBody(S.fly.b);if(S.flyNext)disposeBody(S.flyNext);S.fly=null;S.flyNext=null;S.flyWait=8+Math.random()*8}
+function resetFly(){if(S.fly)disposeBody(S.fly.b);if(S.flyNext)disposeBody(S.flyNext);S.fly=null;S.flyNext=null;S.flyWait=8+Math.random()*8;S.ship=null;S.shWait=20+Math.random()*20}
 function pickFly(){
   const p=BODIES[Math.floor(Math.random()*BODIES.length)],x=p[2];
   return makeBody(p[0],p[1],Math.floor(Math.random()*1e6),typeof x==='string'?x:'',typeof x==='object'?x:null);
@@ -833,13 +839,13 @@ function flyStep(dt,dn){
     if(S.v<5)F.kill+=dt*.4;
     if(S.turn||dn<DROP_D+.12)F.kill+=dt*2.5;   // 회전·워프 아웃 직전에는 서서히 사라진다
     const x=W*.46+F.X/Math.max(.05,F.Z)*Math.sqrt(W*W+H*H)*.38;
-    if(F.kill>=1||F.Z<.22||Math.abs(x-W*.46)>W*.9+F.R*Math.sqrt(W*W+H*H)*.38/Math.max(.05,F.Z)){disposeBody(F.b);S.fly=null;S.flyWait=16+Math.random()*26}
+    if(F.kill>=1||F.Z<.22||Math.abs(x-W*.46)>W*.9+F.R*Math.sqrt(W*W+H*H)*.38/Math.max(.05,F.Z)){disposeBody(F.b);S.fly=null;S.flyWait=(16+Math.random()*26)/Math.max(.05,CFG.fq.fly)}
     return;
   }
-  if(!moving)return;
+  if(!moving||CFG.fq.fly<=0)return;
   S.flyWait-=dt;
   if(S.flyWait<14&&!S.flyNext){S.flyNext=pickFly();queueBody(S.flyNext)}
-  if(S.flyWait<=0&&S.flyNext&&S.flyNext.ready&&!S.turn&&dn>DROP_D+.55){
+  if(S.flyWait<=0&&S.flyNext&&S.flyNext.ready&&!S.ship&&!S.turn&&dn>DROP_D+.55){
     const b=S.flyNext;S.flyNext=null;
     const big=b.kind==='galaxy'||b.kind==='neb'||b.kind==='pneb',R=big?.5+Math.random()*.3:b.kind==='asteroid'?.32:.16+Math.random()*.16;
     const side=Math.random()<.5?-1:1,X=side*(R*1.25+.45+Math.random()*.55),Y=(Math.random()-.45)*.7;
@@ -856,6 +862,141 @@ function drawFly(cx0,cy0,F0){
     cx.save();cx.globalAlpha=a*.8;cx.font="14px 'VT323',monospace";cx.fillStyle='#33a08a';cx.textAlign='center';
     cx.fillText(F.b.name,clamp(x,50,W-50),clamp(y+Math.min(r,H*.2)+16,40,H-40));cx.restore();
   }
+}
+
+/* ---------------- 지나가는 우주선 ---------------- */
+const SHIPCLS=[   // L: 길이(월드 단위), sp: 같은 방향으로 앞지를 때 상대속도, op: 엇갈릴 때 상대속도
+  {n:'소형',L:.13,sp:2.2,op:8},{n:'중형',L:.27,sp:1.6,op:6.5},{n:'대형',L:.55,sp:1.1,op:5.2},{n:'특대형',L:1.1,sp:.78,op:4.2}];
+const SHTRAIL=[[110,225,255],[255,160,80],[255,100,205],[170,255,150],[255,250,225]];
+function genShip(ci,seed){
+  const r=mulberry32(seed),F=[],E=[];
+  const HUE=[[150,162,180],[178,152,122],[128,150,172],[158,170,150],[192,192,204]][Math.floor(r()*5)];
+  const ACC=[[226,72,52],[240,172,42],[62,164,232],[92,202,124]][Math.floor(r()*4)];
+  const sh=(c,k)=>c.map(x=>Math.min(255,x*k));
+  const quad=(a,b,c,d,col,k)=>F.push({p:[a,b,c,d],c:col,k:k||0});
+  const tri=(a,b,c,col,k)=>F.push({p:[a,b,c],c:col,k:k||0});
+  const box=(x,y,z,hx,hy,hz,col,k)=>{const P=(a,b,c)=>[x+a*hx,y+b*hy,z+c*hz];
+    quad(P(-1,1,-1),P(1,1,-1),P(1,1,1),P(-1,1,1),sh(col,1.1),k);quad(P(-1,-1,-1),P(-1,-1,1),P(1,-1,1),P(1,-1,-1),sh(col,.65),k);
+    quad(P(1,-1,-1),P(1,-1,1),P(1,1,1),P(1,1,-1),sh(col,.9),k);quad(P(-1,-1,-1),P(-1,1,-1),P(-1,1,1),P(-1,-1,1),sh(col,.9),k);
+    quad(P(-1,-1,1),P(-1,1,1),P(1,1,1),P(1,-1,1),sh(col,.8),k);quad(P(-1,-1,-1),P(1,-1,-1),P(1,1,-1),P(-1,1,-1),sh(col,.6),k)};
+  const loft=(S2,col)=>{const P=(s,sx,sy)=>[sx*s.w,(s.y||0)+sy*s.h,s.z];
+    for(let i=0;i<S2.length-1;i++){const A=S2[i],B=S2[i+1];
+      quad(P(A,-1,1),P(A,1,1),P(B,1,1),P(B,-1,1),sh(col,1.1));quad(P(A,1,1),P(A,1,-1),P(B,1,-1),P(B,1,1),sh(col,.88));
+      quad(P(A,1,-1),P(A,-1,-1),P(B,-1,-1),P(B,1,-1),sh(col,.62));quad(P(A,-1,-1),P(A,-1,1),P(B,-1,1),P(B,-1,-1),sh(col,.88))}
+    const t=S2[0];quad(P(t,-1,-1),P(t,1,-1),P(t,1,1),P(t,-1,1),sh(col,.55))};
+  const eng=(x,y,z,rad)=>{E.push({x,y,z,r:rad});box(x,y,z-.004,rad,rad,.014,[255,205,150],4)};
+  const wing=(sx,z0,z1,span,sw,y,col)=>{const a=[sx*.1,y+.012,z0],b=[sx*.1,y+.012,z1],c=[sx*span,y+.012,z1-sw],d=[sx*.1,y-.012,z0],e=[sx*.1,y-.012,z1],f=[sx*span,y-.012,z1-sw];
+    tri(a,b,c,sh(col,1.05));tri(d,f,e,sh(col,.6));quad(b,e,f,c,sh(col,.8))};
+  const wins=(x,z0,n,dz,y)=>{for(let i=0;i<n;i++){const z=z0+i*dz;quad([x,y,z],[x,y+.022,z],[x,y+.022,z+dz*.55],[x,y,z+dz*.55],[255,214,140],3)}};
+  const kind=ci===0?'dart':ci===1?(r()<.5?'dart':'wedge'):ci===2?(r()<.5?'wedge':'freighter'):(r()<.5?'freighter':'carrier');
+  if(kind==='dart'){
+    loft([{z:-.5,w:.1,h:.07},{z:-.25,w:.17,h:.1},{z:.15,w:.1,h:.07},{z:.5,w:.012,h:.012}],HUE);
+    [-1,1].forEach(s=>{wing(s,-.45,-.05,.52,.14,0,sh(HUE,.9));eng(s*.07,0,-.5,.04)});
+    tri([0,.07,-.42],[0,.07,-.12],[0,.24,-.42],ACC);
+    box(0,.085,.0,.03,.02,.1,[40,60,90],0);
+  }else if(kind==='wedge'){
+    loft([{z:-.5,w:.3,h:.07},{z:-.1,w:.27,h:.085},{z:.5,w:.035,h:.03}],HUE);
+    box(0,.15,-.22,.05,.07,.09,sh(HUE,1.05));wins(.052,-.28,3,.05,.12);wins(-.052,-.28,3,.05,.12);
+    [-1,1].forEach(s=>{box(s*.36,-.01,-.32,.06,.05,.18,sh(HUE,.85));eng(s*.36,-.01,-.5,.045);tri([s*.3,.0,-.15],[s*.3,.0,.2],[s*.42,.0,-.15],ACC)});
+    eng(0,0,-.5,.05);
+  }else if(kind==='freighter'){
+    loft([{z:-.42,w:.07,h:.07},{z:.34,w:.07,h:.07}],sh(HUE,.8));
+    for(let i=0;i<5;i++){const z=-.3+i*.135;[-1,1].forEach(s=>{const c=r()<.4?ACC:sh(HUE,.7+r()*.5);box(s*.15,0,z,.075,.075,.062,c)});box(0,.12,z,.06,.04,.06,sh(HUE,.7+r()*.5))}
+    box(0,.0,-.47,.12,.1,.06,[96,104,118]);
+    for(const [x,y] of [[-.06,.05],[.06,.05],[-.06,-.05],[.06,-.05]])eng(x,y,-.53,.03);
+    loft([{z:.34,w:.07,h:.07},{z:.5,w:.035,h:.04}],sh(HUE,1.1));box(0,.1,.4,.05,.055,.06,sh(HUE,1.1));wins(.052,.36,3,.035,.1);wins(-.052,.36,3,.035,.1);
+  }else{   // 항공모함형
+    loft([{z:-.5,w:.34,h:.06},{z:-.1,w:.4,h:.07},{z:.35,w:.26,h:.05},{z:.5,w:.03,h:.02}],HUE);
+    for(let i=0;i<5;i++)quad([-.18,.062,-.4+i*.15],[.18,.062,-.4+i*.15],[.18,.062,-.37+i*.15],[-.18,.062,-.37+i*.15],ACC);
+    box(.26,.13,-.06,.04,.1,.1,sh(HUE,1.1));wins(.3,-.14,5,.04,.12);
+    wins(.4,-.4,10,.07,.0);wins(-.4,-.4,10,.07,.0);
+    for(const x of[-.27,-.09,.09,.27])eng(x,0,-.51,.045);
+  }
+  return{F,E,L:SHIPCLS[ci].L,ci,kind,trail:SHTRAIL[Math.floor(r()*SHTRAIL.length)]};
+}
+function shipSpawn(){
+  const ci=(()=>{const q=Math.random();return q<.34?0:q<.66?1:q<.9?2:3})(),C=SHIPCLS[ci],same=Math.random()<.5;
+  const m=genShip(ci,Math.floor(Math.random()*1e6)),th=Math.random()*6.283,rho=.55+C.L*.9+Math.random()*.8;
+  const X=rho*Math.cos(th),Y=rho*Math.sin(th)*.8;
+  const spd=(same?C.sp:C.op)*(.85+Math.random()*.3);
+  S.ship={m,X,Y,Z:same?-.2:13,yaw:(same?0:Math.PI)+(Math.random()-.5)*.5,roll:(Math.random()-.5)*.9,spd,same,t:0,kill:0,
+    tl:Math.min(9,C.L*(7+Math.random()*8))};
+}
+function shipStep(dt,dn){
+  const sh=S.ship;
+  if(S.mode==='idle'||S.arrived){S.ship=null;return}
+  if(sh){
+    sh.t+=dt;const f=[Math.sin(sh.yaw),Math.cos(sh.yaw)];sh.X+=f[0]*sh.spd*dt;sh.Z+=f[1]*sh.spd*dt;
+    if(S.v<5)sh.kill+=dt*.4;
+    if(S.turn||dn<DROP_D+.12)sh.kill+=dt*2.5;
+    const sx=Math.abs(sh.X/Math.max(.05,sh.Z))*Math.sqrt(W*W+H*H)*.38;
+    if(sh.kill>=1||sh.t>45||(sh.same&&sh.Z>14)||(!sh.same&&(sh.Z<.3+sh.m.L*.5||sx>W*1.1+sh.m.L/Math.max(.2,sh.Z)*400))){S.ship=null;S.shWait=(28+Math.random()*34)/Math.max(.05,CFG.fq.ship)}
+    return;
+  }
+  if(S.v<=15||CFG.fq.ship<=0)return;
+  S.shWait-=dt;
+  if(S.shWait<=0&&!S.fly&&!S.turn&&dn>DROP_D+.55)shipSpawn();
+}
+function drawShip(cx0,cy0,F0){
+  const sh=S.ship;if(!sh)return;
+  const m=sh.m,L=m.L,NEAR=.14;
+  if(sh.Z<NEAR+L*.5)return;
+  const a=clamp(sh.t/.7,0,1)*(1-clamp(sh.kill,0,1));
+  const sn=Math.sin(sh.yaw),cs=Math.cos(sh.yaw),sr=Math.sin(sh.roll),cr=Math.cos(sh.roll);
+  const tf=p=>{const x=p[0]*L,y=p[1]*L,z=p[2]*L,x1=x*cr-y*sr,y1=x*sr+y*cr;return[x1*cs+z*sn,y1,-x1*sn+z*cs]};   // 선체 → 카메라 방향(이동 전)
+  const scr=(X,Y,Z)=>{Z=Math.max(NEAR,Z);return[cx0+X/Z*F0,cy0-Y/Z*F0,Z]};
+  const cxp=cx0+sh.X/sh.Z*F0;
+  if(Math.abs(cxp-cx0)>W*1.4+L/sh.Z*F0*2)return;
+  cx.save();cx.globalAlpha=a;
+  // 후미의 빛줄기
+  const bx=-sn,bz=-cs,col=m.trail;
+  cx.globalCompositeOperation='lighter';
+  for(const e of m.E){
+    const q=tf([e.x,e.y,e.z]),ex=sh.X+q[0],ey=sh.Y+q[1],ez=sh.Z+q[2];
+    if(ez<NEAR)continue;
+    let len=sh.tl;if(bz<0){const zmin=Math.max(.3,ez*.5);if(ez+bz*len<zmin)len=Math.max(0,(ez-zmin)/-bz)}   // 카메라 쪽으로 뻗는 줄기는 화면을 가로지르지 않게 제한
+    const p0=scr(ex,ey,ez),p1=scr(ex+bx*len,ey,ez+bz*len);
+    const rad=e.r*L,w0=Math.max(.8,rad/ez*F0*.8),w1=Math.max(.4,rad/p1[2]*F0*.35);
+    let dx=p1[0]-p0[0],dy=p1[1]-p0[1];const dl=Math.hypot(dx,dy)||1;dx/=dl;dy/=dl;const nx=-dy,ny=dx;
+    const g=cx.createLinearGradient(p0[0],p0[1],p1[0],p1[1]);
+    g.addColorStop(0,`rgba(${col[0]},${col[1]},${col[2]},.85)`);g.addColorStop(.3,`rgba(${col[0]},${col[1]},${col[2]},.3)`);g.addColorStop(1,`rgba(${col[0]},${col[1]},${col[2]},0)`);
+    cx.fillStyle=g;cx.beginPath();cx.moveTo(p0[0]+nx*w0,p0[1]+ny*w0);cx.lineTo(p1[0]+nx*w1,p1[1]+ny*w1);cx.lineTo(p1[0]-nx*w1,p1[1]-ny*w1);cx.lineTo(p0[0]-nx*w0,p0[1]-ny*w0);cx.closePath();cx.fill();
+    const g2=cx.createLinearGradient(p0[0],p0[1],p1[0],p1[1]);g2.addColorStop(0,'rgba(255,255,255,.85)');g2.addColorStop(.25,'rgba(255,255,255,.18)');g2.addColorStop(1,'rgba(255,255,255,0)');
+    cx.fillStyle=g2;cx.beginPath();cx.moveTo(p0[0]+nx*w0*.35,p0[1]+ny*w0*.35);cx.lineTo(p1[0],p1[1]);cx.lineTo(p0[0]-nx*w0*.35,p0[1]-ny*w0*.35);cx.closePath();cx.fill();
+  }
+  cx.globalCompositeOperation='source-over';
+  // 선체 (면을 먼 순서로 그린다)
+  const out=[];
+  for(const f of m.F){
+    const R=f.p.map(tf);let zz=0;for(const q of R)zz+=q[2];
+    out.push({f,R,z:zz/R.length});
+  }
+  out.sort((p,q)=>q.z-p.z);
+  const big=L/sh.Z*F0>50;
+  cx.lineJoin='round';
+  for(const o of out){
+    const f=o.f,R=o.R;
+    let pts=R.map(q=>scr(sh.X+q[0],sh.Y+q[1],sh.Z+q[2]));
+    let I=1;
+    if(f.k<3){
+      const ux=R[1][0]-R[0][0],uy=R[1][1]-R[0][1],uz=R[1][2]-R[0][2],vx=R[R.length-1][0]-R[0][0],vy=R[R.length-1][1]-R[0][1],vz=R[R.length-1][2]-R[0][2];
+      const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,nl=Math.hypot(nx,ny,nz)||1;
+      I=.28+.72*Math.abs((nx*LDIR[0]+ny*LDIR[1]+nz*LDIR[2])/nl);
+    }
+    cx.fillStyle=`rgb(${f.c[0]*I|0},${f.c[1]*I|0},${f.c[2]*I|0})`;
+    cx.beginPath();pts.forEach((q,i)=>i?cx.lineTo(q[0],q[1]):cx.moveTo(q[0],q[1]));cx.closePath();cx.fill();
+    if(big&&f.k<3){cx.strokeStyle='rgba(6,10,16,.4)';cx.lineWidth=.6;cx.stroke()}
+  }
+  // 엔진 불빛
+  cx.globalCompositeOperation='lighter';
+  for(const e of m.E){
+    const q=tf([e.x,e.y,e.z]),ez=sh.Z+q[2];if(ez<NEAR)continue;
+    const p=scr(sh.X+q[0],sh.Y+q[1],ez),rr=Math.max(2,e.r*L/ez*F0*2.6);
+    const g=cx.createRadialGradient(p[0],p[1],0,p[0],p[1],rr);
+    g.addColorStop(0,'rgba(255,255,255,.9)');g.addColorStop(.25,`rgba(${m.trail[0]},${m.trail[1]},${m.trail[2]},.55)`);g.addColorStop(1,`rgba(${m.trail[0]},${m.trail[1]},${m.trail[2]},0)`);
+    cx.fillStyle=g;cx.fillRect(p[0]-rr,p[1]-rr,rr*2,rr*2);
+  }
+  cx.restore();
 }
 
 function update(dt){
@@ -878,7 +1019,7 @@ function update(dt){
     if(u>=1){S.turn=null;S.idx++}
   }
   const dn=S.maneuvers[S.idx]?S.maneuvers[S.idx].at-S.s:99;
-  curveStep(dt,phi0);flyStep(dt,dn);
+  curveStep(dt,phi0);flyStep(dt,dn);shipStep(dt,dn);
   let on=S.warpOn;
   if(S.mode==='idle')on=true;
   else if(S.arrived||S.turn)on=false;
@@ -1212,7 +1353,7 @@ function render(dt){
     cx.fillStyle=g;cx.fillRect(0,0,W,H);
   }
 
-  drawFly(cx0,cy0,F);
+  drawFly(cx0,cy0,F);drawShip(cx0,cy0,F);
   // 천체
   if(fm){const Rb=Math.min(W,H)*.34;drawBody(fm.body,cx0+ox,cy0+H*.03,Rb*sc,al*clamp(1-w*1.6,0,1))}
 
@@ -1465,9 +1606,9 @@ async function buildRealRoute(lat,lon,keep,mode){
   for(let k=0;k<ms.length;k++){const prev=k?ms[k-1].at:0;if(ms[k].at-prev>10){ms.splice(k,0,{at:prev+(ms[k].at-prev)/2,type:'WP',ang:0,label:''});k++}}
   assignBodies(ms,d.name,Date.now()&0xffffff);
   S.poly=poly;S.pidx=0;
-  const keepState=keep?{v:S.v,w:S.w,warpOn:S.warpOn}:null;   // 재탐색 때는 속도·워프 상태를 유지
+  const keepState=keep?{v:S.v,w:S.w,warpOn:S.warpOn,dep:S.departed,arr:S.arrNote}:null;   // 재탐색 때는 속도·워프 상태를 유지
   initTrip(mode||'gps',ms,poly.total);
-  if(keepState){S.v=keepState.v;S.w=keepState.w;S.warpOn=keepState.warpOn}
+  if(keepState){S.v=keepState.v;S.w=keepState.w;S.warpOn=keepState.warpOn;S.departed=keepState.dep;S.arrNote=keepState.arr}
 }
 
 /* ---- 중앙 메시지 ---- */
@@ -1475,7 +1616,7 @@ let toastTimer=null;
 function showToast(kind,title,sub,ms,cat){
   const el=$('toast');clearTimeout(toastTimer);
   el.className='show '+kind;$('toastT').textContent=title;$('toastS').textContent=sub||'';
-  S.toastCat=cat||null;S.tUntil=ms?Date.now()+ms:0;
+  S.toastCat=cat||null;S.tUntil=ms?Date.now()+ms:0;S.toastTest=false;
   if(ms)toastTimer=setTimeout(hideToast,ms);
 }
 function showCat(cat,title,sub,ms){   // 설정(CONFIG)의 표시/색/점등 속도를 따르는 메시지
@@ -1512,7 +1653,14 @@ function pickStop(){
   let i;do{i=Math.floor(Math.random()*STOPMSG.length)}while(i===stopIdx);
   stopIdx=i;stopRot=0;showCat('stop',STOPMSG[i][0],STOPMSG[i][1],0);
 }
+function noticeOK(){return S.mode!=='idle'&&!S.arrived&&!S.sigLost&&!S.waiting&&!S.rerouting}
+function tripMsgStep(){   // 출발(목적지 지정 후 첫 이동) / 도착 직전
+  if(!noticeOK())return;
+  if(!S.departed&&S.v>10){S.departed=true;showCat('depart','엔진 점화','DEPARTING · 항해 시작',4500);return}
+  if(!S.arrNote&&S.total>.6&&S.total-S.s<.3&&S.s>.1){S.arrNote=true;showCat('arrive','궤도 진입 준비','ORBITAL INSERTION READY',7000)}
+}
 function stopMsgStep(dt){   // 3초 이상 정차하면 표시, 다시 달리면 사라진다
+  tripMsgStep();
   const act=(S.mode==='gps'&&!S.waiting&&!S.rerouting&&!S.sigLost||S.mode==='sim'&&S.running)&&!S.arrived;
   const still=act&&S.v<(stopT>0?4:2);
   stopT=still?stopT+dt:0;
@@ -1815,14 +1963,19 @@ function cfgMarks(id,min,max,list){$(id).innerHTML=list.map(v=>`<span style="lef
 function cfgSync(){
   $('cfgFly').value=Math.round(CFG.fly*100);$('cfgSt').value=Math.round(CFG.st*100);
   $('cfgFlyV').textContent='×'+CFG.fly.toFixed(2);$('cfgStV').textContent='×'+CFG.st.toFixed(2);
+  $('cfgFqF').value=Math.round(CFG.fq.fly*100);$('cfgFqS').value=Math.round(CFG.fq.ship*100);
+  $('cfgFqFV').textContent=CFG.fq.fly>0?'×'+CFG.fq.fly.toFixed(2):'OFF';$('cfgFqSV').textContent=CFG.fq.ship>0?'×'+CFG.fq.ship.toFixed(2):'OFF';
 }
 cfgMarks('cfgFlyM',.5,3,['0.5','1','2','3']);cfgMarks('cfgStM',.1,3,['0.1','1','2','3']);
 $('cfgFly').oninput=e=>{CFG.fly=e.target.value/100;cfgSync();cfgSave()};
 $('cfgSt').oninput=e=>{CFG.st=e.target.value/100;cfgSync();cfgSave()};
-$('cfgReset').onclick=()=>{CFG.fly=1;CFG.st=1;cfgSync();cfgSave()};
+cfgMarks('cfgFqFM',0,3,['0','1','2','3']);cfgMarks('cfgFqSM',0,3,['0','1','2','3']);
+$('cfgFqF').oninput=e=>{CFG.fq.fly=e.target.value/100;S.flyWait=Math.min(S.flyWait,(16+Math.random()*26)/Math.max(.05,CFG.fq.fly));cfgSync();cfgSave()};
+$('cfgFqS').oninput=e=>{CFG.fq.ship=e.target.value/100;S.shWait=Math.min(S.shWait,(28+Math.random()*34)/Math.max(.05,CFG.fq.ship));cfgSync();cfgSave()};
+$('cfgReset').onclick=()=>{CFG.fly=1;CFG.st=1;CFG.fq.fly=1;CFG.fq.ship=1;cfgSync();cfgSave()};
 $('bCfg').onclick=()=>{cfgSync();$('cfg').classList.remove('hide')};
-$('cfgClose').onclick=()=>$('cfg').classList.add('hide');
-const MSAMPLE={lost:['GPS 신호 소실','SIGNAL LOST · 추측 항법으로 진행 중'],route:['항로 변경','COURSE CHANGE · 경로를 재설정하는 중…'],stop:['엔진 방열중','ENGINE COOLDOWN IN PROGRESS']};
+$('cfgClose').onclick=()=>{$('cfg').classList.add('hide');if(S.toastTest)hideToast()};
+const MSAMPLE={lost:['GPS 신호 소실','SIGNAL LOST · 추측 항법으로 진행 중'],route:['항로 변경','COURSE CHANGE · 경로를 재설정하는 중…'],stop:['엔진 방열중','ENGINE COOLDOWN IN PROGRESS'],arrive:['궤도 진입 준비','ORBITAL INSERTION READY'],depart:['엔진 점화','DEPARTING · 항해 시작']};
 function msgBuild(){
   $('msgRows').innerHTML=Object.keys(MDEF).map(k=>`<div class="mrow" data-k="${k}">
     <div class="mh"><label>${MNAME[k]}</label>
@@ -1849,7 +2002,7 @@ function msgSync(){
     row.style.opacity=c.on?1:.55;
   });
 }
-function msgTest(k){const m=MSAMPLE[k];showCat(k,m[0],m[1],4000)}
+function msgTest(k){const m=MSAMPLE[k];showCat(k,m[0],m[1],4000);S.toastTest=CFG.msg[k].on?true:false}
 cfgSync();msgBuild();
 $('cfgMsgReset').onclick=()=>{CFG.msg=MDEFAULTS();msgSync();cfgSave()};
 
