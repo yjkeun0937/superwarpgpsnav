@@ -106,6 +106,9 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .cfgm span{position:absolute;transform:translateX(-50%)}
 .cfgm span:before{content:"";position:absolute;left:50%;top:-6px;width:1px;height:5px;background:var(--lab)}
 .cfgb{display:flex;gap:8px;margin-top:14px}
+.cfgb .bt{line-height:1.1;padding:6px 4px}
+.cfgtop{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cfgtop .bt{flex:none;width:auto;min-width:84px;font-size:20px;padding:3px 14px}
 #cfg{z-index:30}
 .cfgfold{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;border-top:1px solid var(--line);cursor:pointer;text-align:left;margin-top:18px}
 .cfgfold span{flex:1}.cfgfold b{font:400 20px 'VT323',monospace;color:var(--amb)}.cfgfold i{font-style:normal;font-size:14px;transition:transform .15s}
@@ -287,7 +290,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 
 <div class="ov sheet hide" id="cfg">
   <div class="card">
-    <h1>SYSTEM CONFIG</h1>
+    <div class="cfgtop"><h1>SYSTEM CONFIG</h1><button class="bt act" id="cfgClose" type="button">CLOSE</button></div>
     <p class="sm">효과 조절 · 바꾸는 즉시 적용되고 저장됩니다. (기준값 ×1, 빈도는 실제 간격)</p>
     <div class="cfgrow"><div class="cfgh"><label>천체 통과 속도 (현재 속도에 비례)</label><b id="cfgFlyV">×1.00</b></div>
       <input class="rng" id="cfgFly" type="range" min="50" max="300" step="5" value="100"><div class="cfgm" id="cfgFlyM"></div></div>
@@ -300,8 +303,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
       <input class="rng" id="cfgFqS" type="range" min="0" max="300" step="5" value="100"><div class="cfgm" id="cfgFqSM"></div></div>
     <div class="cfgsec">MESSAGES</div>
     <div id="msgRows"></div>
-    <div class="cfgb"><button class="bt" id="cfgReset" type="button">RESET ×1 (슬라이더 전체)</button><button class="bt act" id="cfgClose" type="button">CLOSE</button></div>
-    <div class="cfgb" style="margin-top:8px"><button class="bt" id="cfgMsgReset" type="button">MESSAGE 기본값 복원</button></div>
+    <div class="cfgb"><button class="bt" id="cfgReset" type="button">슬라이드<br>전체 리셋</button><button class="bt" id="cfgMsgReset" type="button">MESSAGE<br>기본값 복원</button></div>
     <button class="cfgsec cfgfold" id="bdFold" type="button" aria-expanded="false"><span>BODIES 등장 천체 목록</span><b id="bdCnt"></b><i>▼</i></button>
     <div id="bdBox" style="display:none">
       <p class="sm">체크한 천체만 항로(회전·경유 지점)와 스쳐 지나가는 장면에 등장합니다. 전부 끄면 전체가 등장합니다.</p>
@@ -2090,11 +2092,21 @@ function thrUpdate(){
 
 /* ---------------- UI ---------------- */
 function tab(sim){$('tSim').classList.toggle('act',sim);$('tGps').classList.toggle('act',!sim);$('pSim').classList.toggle('on',sim);$('pGps').classList.toggle('on',!sim)}
-$('tSim').onclick=()=>tab(true);$('tGps').onclick=()=>{tab(false);renderHist()};
+$('tSim').onclick=()=>{tab(true);uiSave()};$('tGps').onclick=()=>{tab(false);renderHist();uiSave()};
 let simKind='rand';
 function setKind(k){simKind=k;$('mRand').classList.toggle('act',k==='rand');$('mDest').classList.toggle('act',k==='dest');$('sRand').style.display=k==='rand'?'block':'none';$('sDest').style.display=k==='dest'?'block':'none';setStatus('',0,'simStatus')}
-$('wpAuto').onchange=()=>{$('inWp').disabled=$('wpAuto').checked};
-$('mRand').onclick=()=>setKind('rand');$('mDest').onclick=()=>{setKind('dest');renderHist()};
+$('wpAuto').onchange=()=>{$('inWp').disabled=$('wpAuto').checked;uiSave()};
+/* 최초 화면 설정값 저장 */
+const UKEY='warpnav.ui';
+function uiSave(){try{localStorage.setItem(UKEY,JSON.stringify({sim:$('tSim').classList.contains('act'),kind:simKind,km:$('inKm').value,wp:$('inWp').value,auto:$('wpAuto').checked,ts:$('inTs').value}))}catch(e){}}
+['inKm','inWp','inTs'].forEach(id=>{$(id).addEventListener('input',uiSave);$(id).addEventListener('change',uiSave)});
+try{const u=JSON.parse(localStorage.getItem(UKEY)||'null');if(u){
+  if(u.km!==''&&u.km!=null)$('inKm').value=u.km;if(u.wp!==''&&u.wp!=null)$('inWp').value=u.wp;
+  $('wpAuto').checked=u.auto!==false;$('inWp').disabled=$('wpAuto').checked;
+  if([...$('inTs').options].some(o=>o.value===String(u.ts)))$('inTs').value=u.ts;
+  setKind(u.kind==='dest'?'dest':'rand');tab(u.sim!==false);if(u.kind==='dest'||u.sim===false)renderHist();
+}}catch(e){}
+$('mRand').onclick=()=>{setKind('rand');uiSave()};$('mDest').onclick=()=>{setKind('dest');renderHist();uiSave()};
 $('goSim').onclick=async()=>{
   audioInit();if(AC&&AC.state==='suspended')AC.resume();
   if(simKind==='dest'){await engageSimDest();return}
@@ -2131,7 +2143,11 @@ $('cfgFqF').oninput=e=>{CFG.fq.fly=e.target.value/100;S.flyWait=Math.min(S.flyWa
 $('cfgFqS').oninput=e=>{CFG.fq.ship=e.target.value/100;S.shWait=Math.min(S.shWait,(FQB.ship[0]+Math.random()*(FQB.ship[1]-FQB.ship[0]))/Math.max(.05,CFG.fq.ship));cfgSync();cfgSave()};
 $('cfgReset').onclick=()=>{CFG.fly=1;CFG.st=1;CFG.fq.fly=1;CFG.fq.ship=1.3;cfgSync();cfgSave()};
 $('bCfg').onclick=$('bCfg0').onclick=()=>{cfgSync();$('cfg').classList.remove('hide')};
-$('cfgClose').onclick=()=>{$('cfg').classList.add('hide');if(S.toastTest)hideToast()};
+const cfgClose=()=>{$('cfg').classList.add('hide');if(S.toastTest)hideToast()};
+$('cfgClose').onclick=cfgClose;
+let cfgDown=null;   // 박스 바깥을 눌렀을 때만 닫는다 (슬라이더를 끌다가 바깥에서 놓은 경우는 제외)
+$('cfg').addEventListener('pointerdown',e=>{cfgDown=e.target});
+$('cfg').addEventListener('click',e=>{if(e.target===$('cfg')&&cfgDown===$('cfg'))cfgClose();cfgDown=null});
 const MSAMPLE={lost:['GPS 신호 소실','SIGNAL LOST · 추측 항법으로 진행 중'],route:['항로 변경','COURSE CHANGE · 경로를 재설정하는 중…'],stop:['엔진 방열중','ENGINE COOLDOWN IN PROGRESS'],arrive:['궤도 진입 준비','ORBITAL INSERTION READY'],depart:['엔진 점화','DEPARTING · 항해 시작']};
 function msgBuild(){
   $('msgRows').innerHTML=Object.keys(MDEF).map(k=>`<div class="mrow" data-k="${k}">
