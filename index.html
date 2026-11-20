@@ -107,8 +107,8 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .cfgm span:before{content:"";position:absolute;left:50%;top:-6px;width:1px;height:5px;background:var(--lab)}
 .cfgb{display:flex;gap:8px;margin-top:14px}
 .cfgb .bt{line-height:1.1;padding:6px 4px}
-.cfgtop{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.cfgtop .bt{flex:none;width:auto;min-width:84px;font-size:20px;padding:3px 14px}
+.cfgtop{margin-top:10px}
+.cfgtop .bt{flex:1 1 0;min-width:0;font-size:20px;padding:6px 2px}
 #cfg{z-index:30}
 .cfgfold{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;border-top:1px solid var(--line);cursor:pointer;text-align:left;margin-top:18px}
 .cfgfold span{flex:1}.cfgfold b{font:400 20px 'VT323',monospace;color:var(--amb)}.cfgfold i{font-style:normal;font-size:14px;transition:transform .15s}
@@ -290,21 +290,20 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 
 <div class="ov sheet hide" id="cfg">
   <div class="card">
-    <div class="cfgtop"><h1>SYSTEM CONFIG</h1><button class="bt act" id="cfgClose" type="button">CLOSE</button></div>
+    <h1>SYSTEM CONFIG</h1>
+    <div class="cfgb cfgtop"><button class="bt" id="cfgReset" type="button">슬라이드<br>전체 리셋</button><button class="bt" id="cfgMsgReset" type="button">메시지 설정<br>전체 리셋</button><button class="bt act" id="cfgClose" type="button">CLOSE</button></div>
     <p class="sm">효과 조절 · 바꾸는 즉시 적용되고 저장됩니다. (기준값 ×1, 빈도는 실제 간격)</p>
     <div class="cfgrow"><div class="cfgh"><label>천체 통과 속도 (현재 속도에 비례)</label><b id="cfgFlyV">×1.00</b></div>
       <input class="rng" id="cfgFly" type="range" min="50" max="300" step="5" value="100"><div class="cfgm" id="cfgFlyM"></div></div>
     <div class="cfgrow"><div class="cfgh"><label>워프 줄기 길이</label><b id="cfgStV">×1.00</b></div>
       <input class="rng" id="cfgSt" type="range" min="10" max="300" step="5" value="100"><div class="cfgm" id="cfgStM"></div></div>
-    <div class="cfgsec">FREQUENCY</div>
     <div class="cfgrow"><div class="cfgh"><label>천체 통과 빈도</label><b id="cfgFqFV"></b></div>
       <input class="rng" id="cfgFqF" type="range" min="0" max="300" step="5" value="100"><div class="cfgm" id="cfgFqFM"></div></div>
     <div class="cfgrow"><div class="cfgh"><label>다른 우주선 빈도</label><b id="cfgFqSV"></b></div>
       <input class="rng" id="cfgFqS" type="range" min="0" max="300" step="5" value="100"><div class="cfgm" id="cfgFqSM"></div></div>
     <div class="cfgsec">MESSAGES</div>
     <div id="msgRows"></div>
-    <div class="cfgb"><button class="bt" id="cfgReset" type="button">슬라이드<br>전체 리셋</button><button class="bt" id="cfgMsgReset" type="button">MESSAGE<br>기본값 복원</button></div>
-    <button class="cfgsec cfgfold" id="bdFold" type="button" aria-expanded="false"><span>BODIES 등장 천체 목록</span><b id="bdCnt"></b><i>▼</i></button>
+        <button class="cfgsec cfgfold" id="bdFold" type="button" aria-expanded="false"><span>BODIES 등장 천체 목록</span><b id="bdCnt"></b><i>▼</i></button>
     <div id="bdBox" style="display:none">
       <p class="sm">체크한 천체만 항로(회전·경유 지점)와 스쳐 지나가는 장면에 등장합니다. 전부 끄면 전체가 등장합니다.</p>
       <div class="cfgb" style="margin-top:6px"><button class="bt" id="bdAll" type="button">ALL ON</button><button class="bt" id="bdNone" type="button">ALL OFF</button></div>
