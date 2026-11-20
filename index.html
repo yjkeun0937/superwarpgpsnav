@@ -1599,7 +1599,19 @@ function render(dt){
 const rg=$('rg'),rgx=rg.getContext('2d'),sg=$('sg'),sgx=sg.getContext('2d'),gw=$('gw'),gwx=gw.getContext('2d'),shipEl=$('ship');
 let RW=64,RH=400,SW=300,SH=74,GW=100,GH=22;
 function sizeCv(c,x,cb){const r=c.getBoundingClientRect();c.width=Math.max(1,Math.round(r.width*dpr));c.height=Math.max(1,Math.round(r.height*dpr));x.setTransform(dpr,0,0,dpr,0,0);cb(r.width,r.height)}
-function resizeHud(){sizeCv(rg,rgx,(w,h)=>{RW=w;RH=h});sizeCv(sg,sgx,(w,h)=>{SW=w;SH=h});sizeCv(gw,gwx,(w,h)=>{GW=w;GH=h})}
+const envH=t=>.3+.7*(.5-.5*Math.cos(Math.PI*Math.pow(t,1.15)));
+function resizeHud(){sizeCv(rg,rgx,(w,h)=>{RW=w;RH=h});sizeCv(sg,sgx,(w,h)=>{SW=w;SH=h});sizeCv(gw,gwx,(w,h)=>{GW=w;GH=h});fitSpd()}
+/* 속도 숫자: 비율을 유지한 채 아래쪽으로 키워, 속도 막대(저속 부분) 바로 위까지 내려오게 한다 */
+function fitSpd(){
+  if(!SW||!SH)return;
+  const pl=6,bw=SW-pl*2,base=SH-23,mh=base-6,K=3*58/92+2*.07;   // 3자리 숫자 폭 = 높이 × K
+  let dh=64,ov=0;
+  for(let i=0;i<8;i++){
+    const t=clamp((dh*K-pl)/bw,0,1),ytop=base-4-envH(t)*mh;   // 숫자 오른쪽 끝 위치에서 막대 윤곽선의 위쪽 (캔버스 윗변 기준)
+    ov=Math.max(0,ytop-3);dh=Math.min(120,64+ov);
+  }
+  $('spd').style.setProperty('--sh',dh+'px');$('spd').parentNode.parentNode.style.marginBottom=(-(dh-64))+'px';
+}
 new ResizeObserver(()=>document.documentElement.style.setProperty('--bh',$('bottom').offsetHeight+'px')).observe($('bottom'));
 new ResizeObserver(resizeHud).observe($('hud'));new ResizeObserver(resizeHud).observe($('sg'));resizeHud();
 
@@ -1636,7 +1648,6 @@ sdInit('spd','888');sdInit('dst','88,888');sdInit('eta','88:88');
 
 const VMAX=140,NB=46;
 const ZC=v=>v<30?'#4de8ff':v<60?'#6dff9c':v<100?'#ffb21c':'#ff4136';   // 30 / 60 / 100 km 기준 색
-const envH=t=>.3+.7*(.5-.5*Math.cos(Math.PI*Math.pow(t,1.15)));
 function drawSpeed(){
   const x=sgx;x.clearRect(0,0,SW,SH);
   const pl=6,bw=SW-pl*2,base=SH-23,mh=base-6,step=bw/NB;
