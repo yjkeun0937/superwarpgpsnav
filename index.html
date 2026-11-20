@@ -368,8 +368,11 @@ const BODIES=[
  ['시리우스 B','star','W'],['바람개비 은하','galaxy','grand'],['네오 아르카디아','city',{st:'cube'}],
  ['알비레오','star','Bin'],['55 Cancri e','barren',{lava:1}],['솜브레로 은하','galaxy','sombrero'],
  ['고래자리 τ','gas',{st:'wheel',ring:1}],['세레스 군','asteroid'],['에리다누스 K2','star','K'],['독수리 성운','neb'],
- ['HD 189733 b','gas',{st:'octa'}],['PSR J0437','pulsar'],['3C 48','quasar'],['카펠라 (쌍성)','star','Bin']];
-const HUEOF={earth:210,barren:25,gas:30,city:42,hole:28,pulsar:215,quasar:205,galaxy:265,neb:320,pneb:170,asteroid:30};
+ ['HD 189733 b','gas',{st:'octa'}],['PSR J0437','pulsar'],['3C 48','quasar'],['카펠라 (쌍성)','star','Bin'],
+ ['헤일로-7 (궤도환)','earth',{oring:1}],['레이스 허브','barren',{oring:1}],['가니메데 환상 기지','gas',{oring:1}],['네오 헬리오스 링','city',{oring:1}],
+ ['아르고스 연산 행성','machine'],['제논 데이터 성채','machine',{st:'octa'}],['모놀리스 메트로폴리스','machine'],
+ ['엘리시움 ε (궤도 엘리베이터)','earth',{elev:1}],['아틀라스 승강 기지','barren',{elev:1}],['오리온 승강 도시','city',{elev:1}]];
+const HUEOF={machine:30,earth:210,barren:25,gas:30,city:42,hole:28,pulsar:215,quasar:205,galaxy:265,neb:320,pneb:170,asteroid:30};
 const STARH={Y:48,R:8,B:215,W:200,K:28,Bin:210};
 
 function makeRing(b,r){
@@ -388,6 +391,8 @@ function makeBody(name,kind,seed,sub,o){
   b.hue=kind==='star'?(STARH[b.sub]||48):kind==='gas'?[35,210,170,320,25][b.gp]:(HUEOF[kind]||200);
   if(o.ring)b.ring=makeRing(b,r);
   if(o.st)b.st=makeStation(o.st,seed+3);
+  if(o.oring)b.orRoll=(r()-.5)*.7;
+  if(o.elev){b.est=makeStation(r()<.5?'octa':'cube',seed+5);b.elevA=-Math.PI/2+(r()<.5?-1:1)*(.3+r()*.45)}
   if(kind==='galaxy')b.gx={spiral:{arms:2,tilt:.5,rot:-.45},grand:{arms:2,tilt:.92,rot:.2},sombrero:{arms:0,tilt:.2,rot:-.25}}[b.sub]||{arms:2,tilt:.6,rot:0};
   return b;
 }
@@ -624,15 +629,124 @@ function* genAsteroid(b){
   if(!ROCKS)yield* genRocks();
   b.sp=yield* genRock(256,b.seed+13,b.seed&1);b.ready=true;
 }
+
+/* 궤도 환(인공 궤도 링) — 행성 둘레를 도는 거대한 인공 구조물. 앞/뒤 절반을 미리 그려 둔다 */
+const ORU=240,ORE=.3,ORR=1.55,ORW=.085,ORH=.03;
+function* genOring(b){
+  const r=mulberry32(b.seed+41),W2=Math.ceil((ORR+ORW+.14)*2*ORU),H2=300,cs=Math.cos(ORE),sn=Math.sin(ORE);
+  const mk=()=>{const c=document.createElement('canvas');c.width=W2;c.height=H2;return c};
+  const cB=mk(),cF=mk(),gB=cB.getContext('2d'),gF=cF.getContext('2d');
+  const N=240,HULL=[[160,168,184],[188,176,160],[140,162,180]][Math.floor(r()*3)],ACC=[[255,214,140],[170,225,255],[190,255,200]][Math.floor(r()*3)];
+  const P=(rad,y,th)=>{const x=rad*Math.cos(th),z=rad*Math.sin(th);return[W2/2+x*ORU,H2/2+(z*sn-y*cs)*ORU]};
+  const lit=(nx,ny,nz)=>{const vy=ny*cs-nz*sn,vz=ny*sn+nz*cs;return .3+.7*Math.abs(nx*LDIR[0]+vy*LDIR[1]+vz*LDIR[2])};
+  const poly=(g,pts,col,I,ln)=>{g.fillStyle=`rgb(${col[0]*I|0},${col[1]*I|0},${col[2]*I|0})`;g.strokeStyle=g.fillStyle;g.lineWidth=.8;g.beginPath();pts.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath();g.fill();g.stroke()};
+  const rin=ORR-ORW/2,rout=ORR+ORW/2;
+  for(let i=0;i<N;i++){
+    const t0=i/N*6.2832,t1=(i+1)/N*6.2832,tm=(t0+t1)/2,front=Math.sin(tm)>0,g=front?gF:gB;
+    const mod=i%24<2,hv=hash(i*977+b.seed),h=mod?ORH*2.8:ORH,ro=mod?rout+.035:rout,ri=mod?rin-.02:rin;
+    const col=mod?HULL.map(x=>Math.min(255,x*1.15)):HULL.map(x=>x*(.82+.3*hv));
+    const cm=Math.cos(tm),sm=Math.sin(tm);
+    // 옆면: 앞쪽은 바깥벽, 뒤쪽은 안쪽벽이 보인다
+    const wr=front?ro:ri,wn=front?1:-1;
+    const W=[P(wr,-ORH,t0),P(wr,h,t0),P(wr,h,t1),P(wr,-ORH,t1)];
+    poly(g,W,col,lit(cm*wn,0,sm*wn),1);
+    poly(g,[P(ri,h,t0),P(ro,h,t0),P(ro,h,t1),P(ri,h,t1)],col,lit(0,1,0),1);   // 윗면
+    // 창문 불빛
+    if(hash(i*31+7+b.seed)<(mod?.95:.42)){
+      const u0=.2+.2*hash(i+3),u1=u0+.35,v0=.28,v1=.62,pp=(u,v)=>{const A=W[0],B=W[1],C=W[2],D=W[3];
+        const lx=A[0]+(D[0]-A[0])*u,ly=A[1]+(D[1]-A[1])*u,hx=B[0]+(C[0]-B[0])*u,hy=B[1]+(C[1]-B[1])*u;return[lx+(hx-lx)*v,ly+(hy-ly)*v]};
+      g.fillStyle=`rgba(${ACC[0]},${ACC[1]},${ACC[2]},.95)`;g.beginPath();[pp(u0,v0),pp(u1,v0),pp(u1,v1),pp(u0,v1)].forEach((q,k)=>k?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath();g.fill();
+    }
+    if(i%6===0){const q=P(ro-.012,h,tm);g.fillStyle='rgba(255,255,255,.95)';g.fillRect(q[0]-.8,q[1]-.8,1.6,1.6)}
+    if(mod&&i%24===0){const q=P(ro,h*.5,tm),gr=g.createRadialGradient(q[0],q[1],0,q[0],q[1],14);gr.addColorStop(0,`rgba(${ACC[0]},${ACC[1]},${ACC[2]},.55)`);gr.addColorStop(1,`rgba(${ACC[0]},${ACC[1]},${ACC[2]},0)`);g.save();g.globalCompositeOperation='lighter';g.fillStyle=gr;g.fillRect(q[0]-14,q[1]-14,28,28);g.restore()}
+    if(i%40===0)yield;
+  }
+  b.orB=cB;b.orF=cF;b.orC=ACC;
+}
+function drawOring(b,x,y,r,front,t){
+  const c=front?b.orF:b.orB;if(!c)return;
+  const s=r/ORU;cx.save();cx.translate(x,y);cx.rotate(b.orRoll);
+  cx.drawImage(c,-c.width/2*s,-c.height/2*s,c.width*s,c.height*s);
+  cx.globalCompositeOperation='lighter';   // 궤도환을 오가는 셔틀 불빛
+  for(let k=0;k<6;k++){
+    const th=t*(.05+.012*k)*(k%2?-1:1)+k*1.1,sh=Math.sin(th);if((sh>0)!==front)continue;
+    const px=Math.cos(th)*ORR*r,py=sh*Math.sin(ORE)*ORR*r-ORH*r*1.3,gr=cx.createRadialGradient(px,py,0,px,py,r*.045);
+    gr.addColorStop(0,'rgba(255,255,255,.95)');gr.addColorStop(.3,`rgba(${b.orC[0]},${b.orC[1]},${b.orC[2]},.5)`);gr.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=gr;cx.fillRect(px-r*.05,py-r*.05,r*.1,r*.1);
+  }
+  cx.restore();
+}
+/* 궤도 엘리베이터: 적도의 한 점에서 우주로 뻗은 케이블, 오르내리는 캐빈, 끝의 카운터웨이트 정거장 */
+function drawElev(b,x,y,r,t){
+  const a=b.elevA,ca=Math.cos(a),sa=Math.sin(a),L=r*2.9,x0=x+ca*r*.985,y0=y+sa*r*.985,x1=x+ca*(r+L),y1=y+sa*(r+L),nx=-sa,ny=ca;
+  cx.save();
+  const g=cx.createLinearGradient(x0,y0,x1,y1);g.addColorStop(0,'rgba(255,236,205,.95)');g.addColorStop(.5,'rgba(190,225,255,.75)');g.addColorStop(1,'rgba(150,200,255,.55)');
+  cx.strokeStyle=g;cx.lineCap='round';
+  cx.lineWidth=Math.max(1,r*.013);cx.beginPath();cx.moveTo(x0,y0);cx.lineTo(x1,y1);cx.stroke();
+  cx.globalAlpha*=.45;cx.lineWidth=Math.max(.6,r*.005);
+  for(const o of[-1,1]){cx.beginPath();cx.moveTo(x0+nx*o*r*.025,y0+ny*o*r*.025);cx.lineTo(x1,y1);cx.stroke()}
+  cx.globalAlpha/=.45;
+  // 지상 기지: 삼각 받침과 발광
+  cx.fillStyle='rgba(205,212,224,.9)';cx.beginPath();cx.moveTo(x0+nx*r*.07,y0+ny*r*.07);cx.lineTo(x0-nx*r*.07,y0-ny*r*.07);cx.lineTo(x0+ca*r*.1,y0+sa*r*.1);cx.closePath();cx.fill();
+  cx.globalCompositeOperation='lighter';glowDisc(x0,y0,0,r*.14,'255,190,110',.7,0);
+  // 중간 정거장 노드
+  for(const f of[.22,.52]){const px=x0+(x1-x0)*f,py=y0+(y1-y0)*f;cx.fillStyle='rgba(215,222,235,.95)';cx.fillRect(px-r*.03,py-r*.03,r*.06,r*.06);glowDisc(px,py,0,r*.1,'180,220,255',.45,0)}
+  // 승강 캐빈
+  for(let k=0;k<4;k++){const f=((t*.035+k/4)%1),px=x0+(x1-x0)*f,py=y0+(y1-y0)*f;glowDisc(px,py,0,r*.07,'255,210,140',.9,0);cx.fillStyle='rgba(255,250,235,.95)';cx.fillRect(px-r*.012,py-r*.012,r*.024,r*.024)}
+  cx.restore();
+  drawStation(b.est,{x:x1,y:y1,z:0},r*1.7,t);
+}
+/* 기계(행성도시) 행성 */
+function* genMachine(b){
+  const r=mulberry32(b.seed+14),sd=Math.floor(r()*200),W2=768,H2=384;
+  const c=yield* pix(W2,H2,(u,v,d,o,x,y)=>{
+    const h0=hash(Math.floor(x/48)*7919+Math.floor(y/48)*104729+sd),s=h0<.35?48:h0<.7?24:12;
+    let s2=s,h2=hash(Math.floor(x/s)*3511+Math.floor(y/s)*92821+sd*7+s);
+    if(h2<.4&&s>=24){s2=s/2;h2=hash(Math.floor(x/s2)*6007+Math.floor(y/s2)*50021+sd*3+s2)}
+    const fx=(x%s2)/s2,fy=(y%s2)/s2;
+    let L=.14+.2*h2+((fx<.07||fy<.07)?-.09:0)+((fx>.07&&fx<.22&&fy>.07)?.07:(fy>.07&&fy<.22&&fx>.07)?.05:0);
+    L*=.75+.5*fbm(u*10,v*5,10,3,sd);if(h2>.93)L+=.12;
+    const tint=fbm(u*3+4,v*1.5,3,2,sd+9)>.6;
+    put(d,o,L*255*(tint?.9:1.04),L*255*(tint?1.04:.99),L*255*(tint?1.04:.92));
+  });
+  b.tex=dbl(c);
+  const lc=document.createElement('canvas');lc.width=W2;lc.height=H2;const g=lc.getContext('2d');g.fillStyle='#000';g.fillRect(0,0,W2,H2);g.globalCompositeOperation='lighter';g.lineCap='round';
+  const cols=['255,96,18','255,124,30','255,160,52'];
+  const road=(x0,y0,dir,steps,depth)=>{
+    let x=x0,y=y0;const col=cols[Math.floor(r()*3)],wd=depth===0?1.5:1;
+    for(let i=0;i<steps;i++){
+      const len=8+r()*40,nx=x+Math.cos(dir)*len,ny=y+Math.sin(dir)*len;
+      g.strokeStyle=`rgba(${col},.07)`;g.lineWidth=wd*3.2;g.beginPath();g.moveTo(x,y);g.lineTo(nx,ny);g.stroke();
+      g.strokeStyle=`rgba(${col},${.5+.3*r()})`;g.lineWidth=wd*.8;g.beginPath();g.moveTo(x,y);g.lineTo(nx,ny);g.stroke();
+      x=nx;y=ny;
+      if(r()<.38)dir+=(r()<.5?1:-1)*Math.PI/2;else if(r()<.08)dir+=(r()<.5?1:-1)*Math.PI/4;
+      if(depth<2&&r()<.16)road(x,y,dir+(r()<.5?1:-1)*Math.PI/2,4+Math.floor(r()*8),depth+1);
+      if(y<4||y>H2-4)break;
+    }
+  };
+  for(let i=0;i<55;i++){road(r()*W2,H2*.08+r()*H2*.84,Math.floor(r()*4)*Math.PI/2,8+Math.floor(r()*14),0);if(i%11===10)yield}
+  g.fillStyle='rgba(255,170,80,.3)';for(let i=0;i<1600;i++)g.fillRect(r()*W2,r()*H2,1+r()*2,1);
+  const hub=(hx,hy,R0)=>{
+    g.save();g.translate(hx,hy);
+    const gr=g.createRadialGradient(0,0,0,0,0,R0*1.25);gr.addColorStop(0,'rgba(255,170,60,.55)');gr.addColorStop(.5,'rgba(255,120,20,.18)');gr.addColorStop(1,'rgba(255,100,10,0)');g.fillStyle=gr;g.beginPath();g.arc(0,0,R0*1.25,0,6.283);g.fill();
+    for(let k=1;k<=6;k++){g.strokeStyle=`rgba(255,${150+k*12},${50+k*10},${.95-.08*k})`;g.lineWidth=k%2?1.6:.9;g.setLineDash(k%3===0?[R0*.04,R0*.03]:k%3===1?[R0*.3,R0*.04]:[]);g.beginPath();g.arc(0,0,R0*k/6,0,6.283);g.stroke()}
+    g.setLineDash([]);const sp=18+Math.floor(r()*14);
+    for(let k=0;k<sp;k++){const a=k/sp*6.283,e=R0*(.55+.45*(k%2));g.strokeStyle='rgba(255,190,90,.75)';g.lineWidth=.9;g.beginPath();g.moveTo(Math.cos(a)*R0*.18,Math.sin(a)*R0*.18);g.lineTo(Math.cos(a)*e,Math.sin(a)*e);g.stroke()}
+    g.fillStyle='rgba(255,232,175,.95)';g.beginPath();g.arc(0,0,R0*.07,0,6.283);g.fill();g.restore();
+  };
+  hub(W2*(.18+r()*.12),H2*(.5+.08*(r()-.5)),62);
+  for(let i=0;i<5;i++)hub(r()*W2,H2*(.2+r()*.6),18+r()*16);
+  b.lights=dbl(lc);b.ready=true;
+}
 function* genBody(b){
-  const k=b.kind;
-  if(k==='earth')yield* genEarth(b);else if(k==='barren')yield* genBarren(b);else if(k==='gas')yield* genGas(b);else if(k==='city')yield* genCity(b);
+  const k=b.kind;if(b.o.oring)yield* genOring(b);
+  if(k==='earth')yield* genEarth(b);else if(k==='barren')yield* genBarren(b);else if(k==='gas')yield* genGas(b);else if(k==='city')yield* genCity(b);else if(k==='machine')yield* genMachine(b);
   else if(k==='galaxy')yield* genGalaxy(b);else if(k==='neb'||k==='pneb')yield* genNeb(b);else if(k==='asteroid')yield* genAsteroid(b);
   else if(k==='star'){const need=b.sub==='Bin'?['B','K']:[b.sub];for(const s of need)if(!SUNTEX[s])yield* genSun(s);b.ready=true}
   else b.ready=true;   // 블랙홀·펄서·퀘이사는 텍스처 없이 그린다
 }
 function queueBody(b){if(b.queued)return;b.queued=true;JOBS.push(genBody(b))}
-function disposeBody(b){if(!b.queued)return;b.tex=b.clouds=b.lights=b.sp=null;b.ready=false;b.queued=false}
+function disposeBody(b){if(!b.queued)return;b.tex=b.clouds=b.lights=b.sp=b.orB=b.orF=null;b.ready=false;b.queued=false}
 let prepMs=null,prepIdx=-1;
 function prepBodies(){   // 앞으로 만날 천체 3개 텍스처를 미리 만들고, 지나간 것은 해제한다
   if(prepMs===S.maneuvers&&prepIdx===S.idx)return;prepMs=S.maneuvers;prepIdx=S.idx;
@@ -656,7 +770,7 @@ function makeStation(type,seed){
       .forEach(q=>face(q.map(t=>P(t[0],t[1],t[2])),col,0))};
   const pyr=(c,base,apex,col)=>{const A=[[c[0]-base,c[1],c[2]-base],[c[0]+base,c[1],c[2]-base],[c[0]+base,c[1],c[2]+base],[c[0]-base,c[1],c[2]+base]];
     for(let i=0;i<4;i++)face([A[i],A[(i+1)%4],apex],col,0)};
-  let size=.25,axis='y';
+  let size=.125,axis='y';
   if(type==='cube'){
     const fr=[[[0,0,1],[1,0,0],[0,1,0]],[[0,0,-1],[-1,0,0],[0,1,0]],[[1,0,0],[0,0,-1],[0,1,0]],[[-1,0,0],[0,0,1],[0,1,0]],[[0,1,0],[1,0,0],[0,0,-1]],[[0,-1,0],[1,0,0],[0,0,1]]],Nn=4;
     const P=(n,u,v,a,b,h)=>[n[0]*h+u[0]*a+v[0]*b,n[1]*h+u[1]*a+v[1]*b,n[2]*h+u[2]*a+v[2]*b];
@@ -683,7 +797,7 @@ function makeStation(type,seed){
     [[1,0],[-1,0],[0,1],[0,-1]].forEach(d=>{
       const ux=[d[0],0,d[1]],uz=[-d[1],0,d[0]];panel([ux[0]*1.05+uz[0]*-.5,0,ux[2]*1.05+uz[2]*-.5],ux,uz,4,2,1.2,1);
     });
-    size=.23;
+    size=.115;
   }else{   // wheel
     const NS=34,R=1,tk=.075,hw=.2;
     for(let i=0;i<NS;i++){
@@ -704,7 +818,7 @@ function makeStation(type,seed){
       face([P(a0,.22,.34),P(a1,.22,.34),P(a1,.1,.52),P(a0,.1,.52)],[196,200,212],0);
       face([P(a0,.22,-.34),P(a1,.22,-.34),P(a1,.1,-.52),P(a0,.1,-.52)],[196,200,212],0);
       face([P(a0,.1,.52),P(a1,.1,.52),P(a1,.05,.78),P(a0,.05,.78)],[224,92,52],0);}
-    size=.38;axis='z';
+    size=.19;axis='z';
   }
   return{type,F,size,axis};
 }
@@ -716,7 +830,7 @@ function stationPos(b,x,y,r,t){
   return{x:x+Math.cos(a)*rho,y:y+Math.sin(a)*rho*.3-rho*.04,z:Math.sin(a)};
 }
 function drawStation(st,sp,r,t){
-  const s=r*st.size*(.88+.12*sp.z),F=st.F;
+  const s=r*st.size*(1+.32*sp.z),F=st.F;   // 행성 뒤(z<0)로 돌아가면 멀어져서 작아진다
   let M;
   if(st.axis==='z')M=mm(rotM('x',1.05),mm(rotM('y',.45+.14*Math.sin(t*.2)),rotM('z',t*.5)));
   else M=mm(rotM('x',.5+.18*Math.sin(t*.3)),mm(rotM('y',t*.38),rotM('z',.3)));
@@ -1104,11 +1218,12 @@ function drawRing(b,x,y,r,front){
   cx.restore();
 }
 function drawPlanet(b,x,y,r,t){
-  if(b.ring&&b.st)r*=.58;else if(b.ring)r*=.7;else if(b.st)r*=.68;
+  if(b.o.oring)r*=.66;else if(b.o.elev)r*=.6;else if(b.ring&&b.st)r*=.58;else if(b.ring)r*=.7;else if(b.st)r*=.68;
   if(!b.ready){placeholder(b,x,y,r);return}
   const rot=t*(b.kind==='gas'?.018:.012)+b.seed*.0013;
   let sp=null;if(b.st){sp=stationPos(b,x,y,r,t);if(sp.z<0)drawStation(b.st,sp,r,t)}
   if(b.ring)drawRing(b,x,y,r,false);
+  if(b.o.oring)drawOring(b,x,y,r,false,t);
   cx.save();circPath(x,y,r);cx.clip();cx.translate(x,y);cx.rotate(b.tilt);cx.translate(-x,-y);
   sphereTex(b.tex,x,y,r*1.02,rot);
   if(b.clouds)sphereTex(b.clouds,x,y,r*1.02,rot*1.4+.2,.78);
@@ -1120,11 +1235,18 @@ function drawPlanet(b,x,y,r,t){
     const g=cx.createRadialGradient(x-r*.55,y-r*.5,0,x-r*.55,y-r*.5,r*.9);g.addColorStop(0,'rgba(255,238,215,.3)');g.addColorStop(.7,'rgba(255,238,215,.04)');g.addColorStop(1,'rgba(255,238,215,0)');
     cx.fillStyle=g;circPath(x,y,r);cx.fill();
     atmosphere(x,y,r,'255,170,90',.7);
+  }else if(b.kind==='machine'){
+    terminator(x,y,r,.95);
+    cx.save();circPath(x,y,r);cx.clip();cx.translate(x,y);cx.rotate(b.tilt);cx.translate(-x,-y);
+    sphereTex(b.lights,x,y,r*1.02,rot,.8,'lighter');cx.restore();
+    atmosphere(x,y,r,'255,150,70',.4);
   }else{
     terminator(x,y,r,b.kind==='barren'?1.05:1);
     atmosphere(x,y,r,b.kind==='earth'?'110,170,255':b.kind==='gas'?([ '255,210,150','150,190,255','150,230,220','255,170,220','255,190,120'][b.gp]):'255,200,170',b.kind==='barren'?(b.o.lava?.5:.12):.62);
   }
   if(b.ring)drawRing(b,x,y,r,true);
+  if(b.o.oring)drawOring(b,x,y,r,true,t);
+  if(b.o.elev)drawElev(b,x,y,r,t);
   if(sp&&sp.z>=0)drawStation(b.st,sp,r,t);
 }
 
@@ -1304,7 +1426,7 @@ function drawBody(b,x,y,r,a){
   if(a<=.01||r<.5)return;
   const t=S.t;cx.save();cx.globalAlpha=a;
   switch(b.kind){
-    case 'earth':case 'barren':case 'gas':case 'city':drawPlanet(b,x,y,r,t);break;
+    case 'earth':case 'barren':case 'gas':case 'city':case 'machine':drawPlanet(b,x,y,r,t);break;
     case 'star':drawStar(b,x,y,r,t);break;
     case 'hole':drawHole(b,x,y,r,t);break;
     case 'pulsar':drawPulsar(b,x,y,r,t);break;
