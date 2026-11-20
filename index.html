@@ -107,6 +107,16 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .cfgm span:before{content:"";position:absolute;left:50%;top:-6px;width:1px;height:5px;background:var(--lab)}
 .cfgb{display:flex;gap:8px;margin-top:14px}
 .ov.sheet{align-items:flex-end;background:rgba(0,5,4,.38)}
+.ov.sheet .card{max-height:64dvh}
+.cfgsec{margin:16px 0 4px;padding-top:8px;border-top:1px solid var(--line);font:18px 'VT323',monospace;letter-spacing:.08em;color:var(--fg)}
+.mrow{margin:8px 0;padding:8px;border:1px solid var(--line);background:rgba(2,12,10,.6)}
+.mh{display:flex;align-items:center;gap:6px}
+.mh label{flex:1;min-width:0;font-size:12px;color:var(--lab)}
+.mh .bt{flex:none;font-size:15px;padding:1px 8px;min-width:46px}
+.mh .bt.sw{width:28px;min-width:28px;height:24px;padding:0;border:2px solid #101010}
+.mh .bt.sw.sel{outline:2px solid #fff;outline-offset:1px}
+.mrow .cfgh b{font-size:22px}
+.mrow .rng{height:26px}
 /* 스로틀 레버 (시뮬레이션) */
 #thr{position:absolute;left:8px;top:176px;bottom:222px;width:54px;display:none;flex-direction:column;align-items:center;gap:5px;pointer-events:none}
 #thr.on{display:flex}
@@ -130,8 +140,11 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 #uM{color:var(--lab)}
 #uC{color:var(--fg);text-align:left}
 /* 중앙 메시지 */
-#toast{position:absolute;left:50%;top:31%;width:max-content;transform:translate(-50%,-50%) scale(.96);z-index:4;pointer-events:none;opacity:0;transition:opacity .25s,transform .25s;text-align:center;padding:10px 24px 9px;box-sizing:border-box;min-width:210px;max-width:90vw;border:2px solid var(--amb);background:rgba(2,8,6,.74);color:var(--amb);text-shadow:0 0 8px currentColor;box-shadow:0 0 18px rgba(255,178,28,.35)}
+#toast{position:absolute;left:50%;top:31%;width:max-content;transform:translate(-50%,-50%) scale(.96);z-index:30;pointer-events:none;opacity:0;transition:opacity .25s,transform .25s;text-align:center;padding:10px 24px 9px;box-sizing:border-box;min-width:210px;max-width:90vw;border:2px solid var(--amb);background:rgba(2,8,6,.74);color:var(--amb);text-shadow:0 0 8px currentColor;box-shadow:0 0 18px rgba(255,178,28,.35)}
 #toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#toast.cat{border-color:var(--tc);color:var(--tc);box-shadow:0 0 18px var(--tcg)}
+#toast.cat.pulse{animation:tbl var(--tp,1s) steps(1) infinite}
+@keyframes tbl{0%,49.99%{opacity:1}50%,100%{opacity:.16}}
 #toast.ok{border-color:var(--fg);color:var(--fg);box-shadow:0 0 18px rgba(44,245,192,.35)}
 #toast.bad{border-color:var(--red);color:#ff7b70;box-shadow:0 0 18px rgba(255,65,54,.35)}
 #toast.blink b{animation:bl .8s steps(2) infinite}
@@ -270,7 +283,10 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
       <input class="rng" id="cfgFly" type="range" min="50" max="300" step="5" value="100"><div class="cfgm" id="cfgFlyM"></div></div>
     <div class="cfgrow"><div class="cfgh"><label>워프 줄기 길이</label><b id="cfgStV">×1.00</b></div>
       <input class="rng" id="cfgSt" type="range" min="10" max="300" step="5" value="100"><div class="cfgm" id="cfgStM"></div></div>
+    <div class="cfgsec">MESSAGES</div>
+    <div id="msgRows"></div>
     <div class="cfgb"><button class="bt" id="cfgReset" type="button">RESET ×1</button><button class="bt act" id="cfgClose" type="button">CLOSE</button></div>
+    <div class="cfgb" style="margin-top:8px"><button class="bt" id="cfgMsgReset" type="button">MESSAGE 기본값 복원</button></div>
   </div>
 </div>
 
@@ -318,8 +334,13 @@ const DROP_D=0.4;      // km: 워프 아웃 시작 거리
 const LY_PER_KM=1000;  // 1 km = 1,000 광년
 
 /* ---------------- 설정 (CONFIG) ---------------- */
-const CKEY='warpnav.cfg',CFG={fly:1,st:1};
-try{const o=JSON.parse(localStorage.getItem(CKEY)||'{}');if(o.fly>=.5&&o.fly<=3)CFG.fly=o.fly;if(o.st>=.1&&o.st<=3)CFG.st=o.st}catch(e){}
+const CKEY='warpnav.cfg',CFG={fly:1,st:1,msg:{}};
+const MCOL={g:'#6dff9c',a:'#ffb21c',r:'#ff4136'};                 // 속도 막대와 같은 색 (초록 / 주황 / 빨강)
+const MDEF={lost:{on:1,c:'r',hz:3},route:{on:1,c:'a',hz:0},stop:{on:1,c:'g',hz:.5}};   // hz: 점등 속도, 0이면 점등하지 않음
+const MNAME={lost:'GPS 신호 소실 / 대기',route:'경로 변경 (항로 이탈)',stop:'정차 중'};
+const MDEFAULTS=()=>JSON.parse(JSON.stringify(MDEF));
+try{const o=JSON.parse(localStorage.getItem(CKEY)||'{}');if(o.fly>=.5&&o.fly<=3)CFG.fly=o.fly;if(o.st>=.1&&o.st<=3)CFG.st=o.st;CFG.msg=MDEFAULTS();if(o.msg)for(const k in MDEF){const m=o.msg[k];if(m){if(m.on===0||m.on===1)CFG.msg[k].on=m.on;if(MCOL[m.c])CFG.msg[k].c=m.c;if(m.hz>=0&&m.hz<=4)CFG.msg[k].hz=m.hz}}}catch(e){}
+if(!CFG.msg.lost)CFG.msg=MDEFAULTS();
 
 /* ---------------- 상태 ---------------- */
 const S={mode:'idle',running:false,t:0,s:0,v:0,vAvg:50,total:0,maneuvers:[],idx:0,ts:10,
@@ -1451,18 +1472,55 @@ async function buildRealRoute(lat,lon,keep,mode){
 
 /* ---- 중앙 메시지 ---- */
 let toastTimer=null;
-function showToast(kind,title,sub,ms){
+function showToast(kind,title,sub,ms,cat){
   const el=$('toast');clearTimeout(toastTimer);
   el.className='show '+kind;$('toastT').textContent=title;$('toastS').textContent=sub||'';
+  S.toastCat=cat||null;S.tUntil=ms?Date.now()+ms:0;
   if(ms)toastTimer=setTimeout(hideToast,ms);
 }
-function showLostToast(){showToast('warn blink','GPS 신호 소실','SIGNAL LOST · 추측 항법으로 진행 중',0)}
-function showWaitToast(){showToast('warn blink','GPS 신호 대기 중','WAITING FOR GPS FIX',0)}
+function showCat(cat,title,sub,ms){   // 설정(CONFIG)의 표시/색/점등 속도를 따르는 메시지
+  const c=CFG.msg[cat],el=$('toast');
+  if(!c.on){clearTimeout(toastTimer);el.classList.remove('show');S.toastCat=null;S.tUntil=0;return}
+  showToast('cat'+(c.hz>0?' pulse':''),title,sub,ms,cat);
+  el.style.setProperty('--tc',MCOL[c.c]);el.style.setProperty('--tcg',MCOL[c.c]+'59');
+  el.style.setProperty('--tp',(c.hz>0?1/c.hz:1)+'s');
+}
+function showLostToast(){showCat('lost','GPS 신호 소실','SIGNAL LOST · 추측 항법으로 진행 중',0)}
+function showWaitToast(){showCat('lost','GPS 신호 대기 중','WAITING FOR GPS FIX',0)}
+function showRouteToast(){showCat('route','항로 변경','COURSE CHANGE · 항로 이탈 감지, 경로를 재설정하는 중…',0)}
 function hideToast(){
-  clearTimeout(toastTimer);
+  clearTimeout(toastTimer);S.toastCat=null;S.tUntil=0;
   if(S.waiting&&S.mode==='gps'){showWaitToast();return}   // 경로 없이 대기 중이면 대기 메시지를 유지
   if(S.sigLost&&S.mode==='gps'){showLostToast();return}   // 신호가 아직 없으면 소실 메시지를 유지
+  if(S.rerouting&&S.mode==='gps'){showRouteToast();return}
   $('toast').classList.remove('show');
+}
+
+/* ---- 정차 메시지 ---- */
+const STOPMSG=[
+  ['관제 지시 대기중','AWAITING CONTROL ORDERS'],
+  ['엔진 방열중','ENGINE COOLDOWN IN PROGRESS'],
+  ['경로상 장애물 회피를 위해 대기중','HOLDING FOR OBSTACLE AVOIDANCE'],
+  ['항로 비콘 동기화 대기중','AWAITING LANE BEACON SYNC'],
+  ['워프 코어 안정화 중','WARP CORE STABILIZING'],
+  ['추진제 재순환 중','PROPELLANT RECIRCULATING'],
+  ['도킹 허가 대기중','DOCKING CLEARANCE PENDING'],
+  ['선단 정렬 대기중','FLEET FORMATION HOLD']
+];
+let stopT=0,stopIdx=-1,stopRot=0;
+function pickStop(){
+  let i;do{i=Math.floor(Math.random()*STOPMSG.length)}while(i===stopIdx);
+  stopIdx=i;stopRot=0;showCat('stop',STOPMSG[i][0],STOPMSG[i][1],0);
+}
+function stopMsgStep(dt){   // 3초 이상 정차하면 표시, 다시 달리면 사라진다
+  const act=(S.mode==='gps'&&!S.waiting&&!S.rerouting&&!S.sigLost||S.mode==='sim'&&S.running)&&!S.arrived;
+  const still=act&&S.v<(stopT>0?4:2);
+  stopT=still?stopT+dt:0;
+  if(!still){if(S.toastCat==='stop')hideToast();return}
+  if(stopT<3)return;
+  if(S.toastCat==='stop'){stopRot+=dt;if(stopRot>14)pickStop();return}
+  if(S.toastCat||(S.tUntil&&Date.now()<S.tUntil))return;   // 다른 메시지가 떠 있으면 기다린다
+  if(CFG.msg.stop.on)pickStop();
 }
 
 /* ---- GPS 수신 감시 ---- */
@@ -1491,7 +1549,7 @@ async function onFix(p){
   const acc=p.coords.accuracy||0,now=Date.now();
   if(acc>150)return;   // 정확도 불량(터널 입구·고층 건물 사이 등)은 신호 없음으로 취급
   const gap=S.lastFixAt?now-S.lastFixAt:0;S.lastFixAt=now;
-  if(S.sigLost){S.sigLost=false;showToast('ok','GPS 신호 재수신','SIGNAL REACQUIRED · 위치 재동기화',2500);beep(880,.08)}
+  if(S.sigLost){S.sigLost=false;hideToast();beep(880,.08)}
   const lat=p.coords.latitude,lon=p.coords.longitude;
   noteHeading(p,lat,lon);
   if(S.waiting){   // 목적지만 정해 둔 상태: 첫 위치가 들어오면 항로를 계산한다
@@ -1512,12 +1570,12 @@ async function onFix(p){
   const pr=projectOn(S.poly,lat,lon,S.pidx,gap>4000?1e9:160);
   if(pr.dist>Math.max(.08,acc/1000*1.5)&&now-S.lastRe>20000){
     S.lastRe=now;S.rerouting=true;
-    showToast('warn blink','항로 이탈','OFF COURSE · 재탐색 중…',0);beep(500,.1,.06);
+    showRouteToast();beep(500,.1,.06);
     try{
       await buildRealRoute(lat,lon,true);
-      showToast('warn','항로 변경','COURSE CHANGE · 경로를 재설정했습니다',3000);beep(740,.1,.06);
+      S.rerouting=false;hideToast();beep(740,.1,.06);
     }catch(e){
-      showToast('bad','항로 재설정 실패','REROUTE FAILED · 잠시 후 다시 시도합니다',3000);
+      S.rerouting=false;showCat('route','항로 재설정 실패','REROUTE FAILED · 잠시 후 다시 시도합니다',3000);
     }
     S.rerouting=false;return;
   }
@@ -1764,13 +1822,42 @@ $('cfgSt').oninput=e=>{CFG.st=e.target.value/100;cfgSync();cfgSave()};
 $('cfgReset').onclick=()=>{CFG.fly=1;CFG.st=1;cfgSync();cfgSave()};
 $('bCfg').onclick=()=>{cfgSync();$('cfg').classList.remove('hide')};
 $('cfgClose').onclick=()=>$('cfg').classList.add('hide');
-cfgSync();
+const MSAMPLE={lost:['GPS 신호 소실','SIGNAL LOST · 추측 항법으로 진행 중'],route:['항로 변경','COURSE CHANGE · 경로를 재설정하는 중…'],stop:['엔진 방열중','ENGINE COOLDOWN IN PROGRESS']};
+function msgBuild(){
+  $('msgRows').innerHTML=Object.keys(MDEF).map(k=>`<div class="mrow" data-k="${k}">
+    <div class="mh"><label>${MNAME[k]}</label>
+      <button class="bt sw" data-c="g" style="background:${MCOL.g}" aria-label="초록"></button><button class="bt sw" data-c="a" style="background:${MCOL.a}" aria-label="주황"></button><button class="bt sw" data-c="r" style="background:${MCOL.r}" aria-label="빨강"></button>
+      <button class="bt" data-on="1">ON</button><button class="bt" data-test="1">TEST</button></div>
+    <div class="cfgh"><label>점등 속도 (0 = 점등 안 함)</label><b data-hz="1"></b></div>
+    <input class="rng" type="range" min="0" max="40" step="1" data-r="1"></div>`).join('');
+  $('msgRows').querySelectorAll('.mrow').forEach(row=>{
+    const k=row.dataset.k;
+    row.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{CFG.msg[k].c=b.dataset.c;msgSync();cfgSave();msgTest(k)});
+    row.querySelector('[data-on]').onclick=()=>{CFG.msg[k].on=CFG.msg[k].on?0:1;msgSync();cfgSave();if(CFG.msg[k].on)msgTest(k);else hideToast()};
+    row.querySelector('[data-test]').onclick=()=>msgTest(k);
+    row.querySelector('[data-r]').oninput=e=>{CFG.msg[k].hz=e.target.value/10;msgSync();cfgSave();msgTest(k)};
+  });
+  msgSync();
+}
+function msgSync(){
+  $('msgRows').querySelectorAll('.mrow').forEach(row=>{
+    const c=CFG.msg[row.dataset.k];
+    row.querySelectorAll('[data-c]').forEach(b=>b.classList.toggle('sel',b.dataset.c===c.c));
+    const on=row.querySelector('[data-on]');on.textContent=c.on?'ON':'OFF';on.classList.toggle('act',!!c.on);
+    row.querySelector('[data-r]').value=Math.round(c.hz*10);
+    row.querySelector('[data-hz]').textContent=c.hz>0?c.hz.toFixed(1)+' Hz':'STEADY';
+    row.style.opacity=c.on?1:.55;
+  });
+}
+function msgTest(k){const m=MSAMPLE[k];showCat(k,m[0],m[1],4000)}
+cfgSync();msgBuild();
+$('cfgMsgReset').onclick=()=>{CFG.msg=MDEFAULTS();msgSync();cfgSave()};
 
 /* ---------------- 루프 ---------------- */
 let last=performance.now();
 function frame(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;
-  update(dt);prepBodies();runJobs(5);render(dt);hud();audioUpdate();
+  update(dt);stopMsgStep(dt);prepBodies();runJobs(5);render(dt);hud();audioUpdate();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
