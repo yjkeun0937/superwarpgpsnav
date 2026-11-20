@@ -157,6 +157,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 #toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
 #toast.cat{border-color:var(--tc);color:var(--tc);box-shadow:0 0 18px var(--tcg)}
 #toast.cat.pulse{animation:tbl var(--tp,1s) steps(1) infinite}
+#toast:not(.show){animation:none!important}   /* 숨긴 뒤에도 깜박임(opacity 애니메이션)이 남아 상자가 사라지지 않던 문제 */
 @keyframes tbl{0%,49.99%{opacity:1}50%,100%{opacity:.16}}
 #toast.ok{border-color:var(--fg);color:var(--fg);box-shadow:0 0 18px rgba(44,245,192,.35)}
 #toast.bad{border-color:var(--red);color:#ff7b70;box-shadow:0 0 18px rgba(255,65,54,.35)}
