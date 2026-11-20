@@ -984,6 +984,7 @@ function flyStep(dt,dn){
     F.t+=dt;F.Z-=FLY_K*S.v*CFG.fly*dt;   // 현재 속도에 비례해서 다가온다
     if(S.v<5)F.kill+=dt*.4;
     if(S.turn||dn<DROP_D+.12)F.kill+=dt*2.5;   // 회전·워프 아웃 직전에는 서서히 사라진다
+    F.kill=Math.max(F.kill,1-clamp((timeToTurn(dn)-10)/4,0,1));   // 회전 14초 전부터 희미해져 10초 전에는 사라진다
     const x=W*.46+F.X/Math.max(.05,F.Z)*Math.sqrt(W*W+H*H)*.38;
     if(F.kill>=1||F.Z<.22||Math.abs(x-W*.46)>W*.9+F.R*Math.sqrt(W*W+H*H)*.38/Math.max(.05,F.Z)){disposeBody(F.b);S.fly=null;S.flyWait=(16+Math.random()*26)/Math.max(.05,CFG.fq.fly)}
     return;
@@ -991,10 +992,10 @@ function flyStep(dt,dn){
   if(!moving||CFG.fq.fly<=0)return;
   S.flyWait-=dt;
   if(S.flyWait<14&&!S.flyNext){S.flyNext=pickFly();queueBody(S.flyNext)}
-  if(S.flyWait<=0&&S.flyNext&&S.flyNext.ready&&!S.turn&&dn>DROP_D+.55){
+  if(S.flyWait<=0&&S.flyNext&&S.flyNext.ready&&!S.turn&&dn>DROP_D+.55&&timeToTurn(dn)>=16&&S.t-(S.turnAt==null?-99:S.turnAt)>=10){   // 회전 전 16초 이내·회전 후 10초 이내에는 나오지 않는다
     const b=S.flyNext;S.flyNext=null;
     const big=b.kind==='galaxy'||b.kind==='neb'||b.kind==='pneb',R=big?.5+Math.random()*.3:b.kind==='asteroid'?.32:.16+Math.random()*.16;
-    const side=Math.random()<.5?-1:1,X=side*(R*1.25+.45+Math.random()*.55),Y=(Math.random()-.45)*.7;
+    const side=Math.random()<.5?-1:1,X=side*(R*2.2+1.1+Math.random()*.7),Y=(Math.random()-.45)*.7;
     S.fly={b,X,Y,Z:9,R,t:0,kill:0};
   }
 }
@@ -1060,26 +1061,26 @@ function genShip(ci,seed){
   }
   return{F,E,L:SHIPCLS[ci].L,ci,kind,trail:SHTRAIL[Math.floor(r()*SHTRAIL.length)]};
 }
+const timeToTurn=dn=>dn*3600/(Math.max(S.v,15)*(S.mode==='sim'?S.ts:1));   // 다음 회전까지 남은 시간(초, 실제 시간 기준)
 const SHCAP=8;                    // 화면에 동시에 있을 수 있는 우주선 상한 (성능 보호)
 const SHW=[3,3,2,2,1,1];          // 1~6대가 등장할 가중치
 function shPickN(max){const w=SHW.slice(0,clamp(max,1,6)),t=w.reduce((a,b)=>a+b,0);let q=Math.random()*t;for(let i=0;i<w.length;i++){q-=w[i];if(q<0)return i+1}return w.length}
 const shInterval=()=>(FQB.ship[0]+Math.random()*(FQB.ship[1]-FQB.ship[0]))/Math.max(.05,CFG.fq.ship);
 function shipSpawn(){
   const ci=(()=>{const q=Math.random();return q<.34?0:q<.66?1:q<.9?2:3})(),C=SHIPCLS[ci],same=Math.random()<(ci>=2?.25:.5);   // 느린 대형·특대형은 엇갈리는 방향이 3:1
-  const m=genShip(ci,Math.floor(Math.random()*1e6)),far=S.t-(S.shTurnAt==null?-99:S.shTurnAt)<5;   // 회전이 끝난 뒤 5초 안에 나오는 우주선은 아주 멀리서 시작한다
+  const m=genShip(ci,Math.floor(Math.random()*1e6)),far=S.t-(S.turnAt==null?-99:S.turnAt)<5;   // 회전이 끝난 뒤 5초 안에 나오는 우주선은 아주 멀리서 시작한다
   let X=0,Y=0;
   for(let k=0;k<12;k++){   // 같은 방향의 다른 우주선과 항로(차선)가 너무 가까우면 다시 뽑는다
     const th=Math.random()*6.283,rho=.55+C.L*.9+Math.random()*.8;X=rho*Math.cos(th);Y=rho*Math.sin(th)*.8;
     if(!S.ships.some(o=>o.same===same&&Math.hypot(o.X-X,o.Y-Y)<(o.m.L+C.L)*.6+.3))break;
   }
   const spd=(same?C.sp:C.op)*(.85+Math.random()*.3);
-  S.ships.push({m,X,Y,Z:same?(far?6:-.2):(far?14.5:13),yaw:same?0:Math.PI,roll:(Math.random()-.5)*.5,spd,same,t:0,kill:0,
+  S.ships.push({m,X,Y,Z:same?(far?6:-.2):(far?32:13),yaw:same?0:Math.PI,roll:(Math.random()-.5)*.5,spd,same,t:0,kill:0,
     tl:Math.min(9,C.L*(7+Math.random()*8))});
 }
 function shipStep(dt,dn){
   if(S.mode==='idle'||S.arrived){S.ships.length=0;S.shQ.length=0;return}
-  const FS=Math.sqrt(W*W+H*H)*.38,ts=S.mode==='sim'?S.ts:1,tm=dn*3600/(Math.max(S.v,15)*ts);   // 다음 회전까지 남은 시간(초)
-  if(S.turn)S.shTurnAt=S.t;
+  const FS=Math.sqrt(W*W+H*H)*.38,tm=timeToTurn(dn);
   for(const sh of S.ships){
     sh.t+=dt;const f=[Math.sin(sh.yaw),Math.cos(sh.yaw)],sp=sh.spd*CFG.shSp;sh.X+=f[0]*sp*dt;sh.Z+=f[1]*sp*dt;
     if(S.v<5)sh.kill+=dt*.4;
@@ -1198,6 +1199,7 @@ function update(dt){
     if(u>=1){S.turn=null;S.idx++}
   }
   const dn=S.maneuvers[S.idx]?S.maneuvers[S.idx].at-S.s:99;
+  if(S.turn)S.turnAt=S.t;   // 마지막으로 회전 중이던 시각 (회전 직후 판단용)
   curveStep(dt,phi0);flyStep(dt,dn);shipStep(dt,dn);
   let on=S.warpOn;
   if(S.mode==='idle')on=true;
