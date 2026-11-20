@@ -1109,7 +1109,7 @@ function shipSpawn(bodyUp){
     if(!S.ships.some(o=>o.same===same&&Math.hypot(o.X-X,o.Y-Y)<(o.m.L+C.L)*.6+.3))break;
   }
   const spd=(same?C.sp:C.op)*(.85+Math.random()*.3);
-  S.ships.push({m,X,Y,Z:same?(far?6:-.2):(far?32:13),yaw:same?0:Math.PI,roll:(Math.random()-.5)*.5,spd,same,t:0,kill:0,
+  S.ships.push({m,X,Y,Z:same?(far?6:-.2):(far?32:13),yaw:same?0:Math.PI,roll:(Math.random()-.5)*.5,spd,same,t:0,kill:0,fin:far?(same?3:1.2):(same?.7:.3),
     tl:Math.min(9,C.L*(7+Math.random()*8))});
 }
 function shipStep(dt,dn){
@@ -1142,7 +1142,7 @@ function drawShip1(sh,cx0,cy0,F0){
   const m=sh.m,L=m.L,NEAR=.14;
   const hullOn=sh.Z>=NEAR+L*.5;
   if(!hullOn&&sh.same)return;
-  const a=clamp(sh.t/(sh.same?.7:.3),0,1)*(1-clamp(sh.kill,0,1))*(1-(sh.fade||0));
+  const a=ease(clamp(sh.t/sh.fin,0,1))*(1-clamp(sh.kill,0,1))*(1-(sh.fade||0));
   const sn=Math.sin(sh.yaw),cs=Math.cos(sh.yaw),sr=Math.sin(sh.roll),cr=Math.cos(sh.roll);
   const tf=p=>{const x=p[0]*L,y=p[1]*L,z=p[2]*L,x1=x*cr-y*sr,y1=x*sr+y*cr;return[x1*cs+z*sn,y1,-x1*sn+z*cs]};   // 선체 → 카메라 방향(이동 전)
   const K=curvK()*.35,BZC=3;   // 휘는 정도는 줄이고, 먼 곳에서는 직선(소실점 방향)에 가까워지게 한다
