@@ -108,7 +108,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 .cfgb{display:flex;gap:8px;margin-top:14px}
 .cfgb .bt{line-height:1.1;padding:6px 4px}
 .cfgtop{margin-top:10px}
-.cfgtop .bt{flex:1 1 0;min-width:0;font-size:20px;padding:6px 2px}
+.cfgtop .bt{flex:1 1 0;min-width:0;font-size:16px;padding:6px 2px}
 #cfg{z-index:30}
 .cfgfold{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;border-top:1px solid var(--line);cursor:pointer;text-align:left;margin-top:18px}
 .cfgfold span{flex:1}.cfgfold b{font:400 20px 'VT323',monospace;color:var(--amb)}.cfgfold i{font-style:normal;font-size:14px;transition:transform .15s}
@@ -291,7 +291,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 <div class="ov sheet hide" id="cfg">
   <div class="card">
     <h1>SYSTEM CONFIG</h1>
-    <div class="cfgb cfgtop"><button class="bt" id="cfgReset" type="button">슬라이드<br>전체 리셋</button><button class="bt" id="cfgMsgReset" type="button">메시지 설정<br>전체 리셋</button><button class="bt act" id="cfgClose" type="button">CLOSE</button></div>
+    <div class="cfgb cfgtop"><button class="bt" id="cfgReset" type="button">슬라이드<br>전체 리셋</button><button class="bt" id="cfgMsgReset" type="button">메시지 설정<br>전체 리셋</button><button class="bt act" id="cfgClose" type="button">닫기</button></div>
     <p class="sm">효과 조절 · 바꾸는 즉시 적용되고 저장됩니다. (기준값 ×1, 빈도는 실제 간격)</p>
     <div class="cfgrow"><div class="cfgh"><label>천체 통과 속도 (현재 속도에 비례)</label><b id="cfgFlyV">×1.00</b></div>
       <input class="rng" id="cfgFly" type="range" min="50" max="300" step="5" value="100"><div class="cfgm" id="cfgFlyM"></div></div>
@@ -299,8 +299,10 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
       <input class="rng" id="cfgSt" type="range" min="10" max="300" step="5" value="100"><div class="cfgm" id="cfgStM"></div></div>
     <div class="cfgrow"><div class="cfgh"><label>천체 통과 빈도</label><b id="cfgFqFV"></b></div>
       <input class="rng" id="cfgFqF" type="range" min="0" max="300" step="5" value="100"><div class="cfgm" id="cfgFqFM"></div></div>
-    <div class="cfgrow"><div class="cfgh"><label>다른 우주선 빈도</label><b id="cfgFqSV"></b></div>
+    <div class="cfgrow"><div class="cfgh"><label>다른 우주선 무리 빈도</label><b id="cfgFqSV"></b></div>
       <input class="rng" id="cfgFqS" type="range" min="0" max="300" step="5" value="100"><div class="cfgm" id="cfgFqSM"></div></div>
+    <div class="cfgrow"><div class="cfgh"><label>무리당 최대 우주선 수</label><b id="cfgShMV"></b></div>
+      <input class="rng" id="cfgShM" type="range" min="1" max="6" step="1" value="6"><div class="cfgm" id="cfgShMM"></div></div>
     <div class="cfgsec">MESSAGES</div>
     <div id="msgRows"></div>
         <button class="cfgsec cfgfold" id="bdFold" type="button" aria-expanded="false"><span>BODIES 등장 천체 목록</span><b id="bdCnt"></b><i>▼</i></button>
@@ -358,21 +360,21 @@ const DROP_D=0.4;      // km: 워프 아웃 시작 거리
 const LY_PER_KM=1000;  // 1 km = 1,000 광년
 
 /* ---------------- 설정 (CONFIG) ---------------- */
-const CKEY='warpnav.cfg',CFG={ver:3,fly:1,st:1,fq:{fly:1,ship:1.3},msg:{},off:{}};   // off: 등장하지 않게 끈 천체 이름
+const CKEY='warpnav.cfg',CFG={ver:3,fly:1,st:1,fq:{fly:1,ship:1.3},msg:{},off:{},shMax:6};   // off: 등장하지 않게 끈 천체 이름
 const FQB={fly:[16,42],ship:[16,42]};   // 기준 간격(초): 실제 간격 = 기준 ÷ 배율
 const fqTxt=(k,v)=>v>0?Math.round(FQB[k][0]/v)+'~'+Math.round(FQB[k][1]/v)+' sec':'OFF';
 const MCOL={g:'#6dff9c',a:'#ffb21c',r:'#ff4136'};                 // 속도 막대와 같은 색 (초록 / 주황 / 빨강)
 const MDEF={lost:{on:1,c:'r',hz:3},route:{on:1,c:'a',hz:0},stop:{on:1,c:'g',hz:.5},arrive:{on:1,c:'g',hz:1.2},depart:{on:1,c:'g',hz:0}};   // hz: 점등 속도, 0이면 점등하지 않음
 const MNAME={lost:'GPS 신호 소실 / 대기',route:'경로 변경 (항로 이탈)',stop:'정차 중',arrive:'도착 직전',depart:'출발 (첫 이동)'};
 const MDEFAULTS=()=>JSON.parse(JSON.stringify(MDEF));
-try{const o=JSON.parse(localStorage.getItem(CKEY)||'{}');if(o.fly>=.5&&o.fly<=3)CFG.fly=o.fly;if(o.st>=.1&&o.st<=3)CFG.st=o.st;if(o.fq){if(o.fq.fly>=0&&o.fq.fly<=3)CFG.fq.fly=o.fq.fly;if(o.ver>=3&&o.fq.ship>=0&&o.fq.ship<=3)CFG.fq.ship=o.fq.ship}CFG.msg=MDEFAULTS();if(o.msg)for(const k in MDEF){const m=o.msg[k];if(m){if(m.on===0||m.on===1)CFG.msg[k].on=m.on;if(MCOL[m.c])CFG.msg[k].c=m.c;if(m.hz>=0&&m.hz<=4)CFG.msg[k].hz=m.hz}}if(o.off&&typeof o.off==='object')for(const n in o.off)if(o.off[n])CFG.off[n]=1}catch(e){}
+try{const o=JSON.parse(localStorage.getItem(CKEY)||'{}');if(o.fly>=.5&&o.fly<=3)CFG.fly=o.fly;if(o.st>=.1&&o.st<=3)CFG.st=o.st;if(o.fq){if(o.fq.fly>=0&&o.fq.fly<=3)CFG.fq.fly=o.fq.fly;if(o.ver>=3&&o.fq.ship>=0&&o.fq.ship<=3)CFG.fq.ship=o.fq.ship}CFG.msg=MDEFAULTS();if(o.msg)for(const k in MDEF){const m=o.msg[k];if(m){if(m.on===0||m.on===1)CFG.msg[k].on=m.on;if(MCOL[m.c])CFG.msg[k].c=m.c;if(m.hz>=0&&m.hz<=4)CFG.msg[k].hz=m.hz}}if(o.off&&typeof o.off==='object')for(const n in o.off)if(o.off[n])CFG.off[n]=1;if(o.shMax>=1&&o.shMax<=6)CFG.shMax=Math.round(o.shMax)}catch(e){}
 if(!CFG.msg.lost)CFG.msg=MDEFAULTS();
 
 /* ---------------- 상태 ---------------- */
 const S={mode:'idle',running:false,t:0,s:0,v:0,vAvg:50,total:0,maneuvers:[],idx:0,ts:10,
   w:1,warpOn:true,phi:0,turn:null,arrived:false,arrM:null,flash:0,side:1,cruise:60,snd:false,
   traffic:null,sigLost:false,lastFixAt:0,dest:null,poly:null,pidx:0,rerouting:false,lastRe:0,waiting:false,busy:false,retryAt:0,manual:false,thr:0,neHue:220,hdgT:null,hdgD:0,hdgReal:false,hdgPrev:null,
-  curW:0,cp1:0,cp2:0,fly:null,flyNext:null,flyWait:10,ship:null,shWait:25,departed:false,arrNote:false,toastTest:false};
+  curW:0,cp1:0,cp2:0,fly:null,flyNext:null,flyWait:10,ships:[],shQ:[],shWait:4,departed:false,arrNote:false,toastTest:false};
 
 /* ---------------- 천체 ---------------- */
 // [이름, 종류, 세부(문자열) 또는 옵션(객체)]  종류: earth barren gas city star hole pulsar quasar galaxy neb pneb asteroid
@@ -968,7 +970,7 @@ function curveStep(dt,phi0){   // 경로(GPS 위치가 맞춰진 경로)의 방�
   const dphi=S.phi-phi0,F=S.fly;
   if(F&&dphi&&!S.turn){const c=Math.cos(dphi),sn=Math.sin(dphi),X=F.X,Z=F.Z;F.X=X*c-Z*sn;F.Z=Z*c+X*sn}   // 시선이 돌면 옆의 천체도 함께 흘러간다
 }
-function resetFly(){if(S.fly)disposeBody(S.fly.b);if(S.flyNext)disposeBody(S.flyNext);S.fly=null;S.flyNext=null;S.flyWait=8+Math.random()*8;S.ship=null;S.shWait=20+Math.random()*20}
+function resetFly(){if(S.fly)disposeBody(S.fly.b);if(S.flyNext)disposeBody(S.flyNext);S.fly=null;S.flyNext=null;S.flyWait=8+Math.random()*8;S.ships=[];S.shQ=[];S.shWait=3+Math.random()*3}
 function pickFly(){
   const pl=enabledBodies(),p=pl[Math.floor(Math.random()*pl.length)],x=p[2];
   return makeBody(p[0],p[1],Math.floor(Math.random()*1e6),typeof x==='string'?x:'',typeof x==='object'?x:null);
@@ -1056,32 +1058,46 @@ function genShip(ci,seed){
   }
   return{F,E,L:SHIPCLS[ci].L,ci,kind,trail:SHTRAIL[Math.floor(r()*SHTRAIL.length)]};
 }
+const SHCAP=8;                    // 화면에 동시에 있을 수 있는 우주선 상한 (성능 보호)
+const SHW=[3,3,2,2,1,1];          // 1~6대가 등장할 가중치
+function shPickN(max){const w=SHW.slice(0,clamp(max,1,6)),t=w.reduce((a,b)=>a+b,0);let q=Math.random()*t;for(let i=0;i<w.length;i++){q-=w[i];if(q<0)return i+1}return w.length}
+const shInterval=()=>(FQB.ship[0]+Math.random()*(FQB.ship[1]-FQB.ship[0]))/Math.max(.05,CFG.fq.ship);
 function shipSpawn(){
   const ci=(()=>{const q=Math.random();return q<.34?0:q<.66?1:q<.9?2:3})(),C=SHIPCLS[ci],same=Math.random()<.5;
-  const m=genShip(ci,Math.floor(Math.random()*1e6)),th=Math.random()*6.283,rho=.55+C.L*.9+Math.random()*.8;
-  const X=rho*Math.cos(th),Y=rho*Math.sin(th)*.8;
+  const m=genShip(ci,Math.floor(Math.random()*1e6));
+  let X=0,Y=0;
+  for(let k=0;k<12;k++){   // 같은 방향의 다른 우주선과 항로(차선)가 너무 가까우면 다시 뽑는다
+    const th=Math.random()*6.283,rho=.55+C.L*.9+Math.random()*.8;X=rho*Math.cos(th);Y=rho*Math.sin(th)*.8;
+    if(!S.ships.some(o=>o.same===same&&Math.hypot(o.X-X,o.Y-Y)<(o.m.L+C.L)*.6+.3))break;
+  }
   const spd=(same?C.sp:C.op)*(.85+Math.random()*.3);
-  S.ship={m,X,Y,Z:same?-.2:13,yaw:same?0:Math.PI,roll:(Math.random()-.5)*.5,spd,same,t:0,kill:0,
-    tl:Math.min(9,C.L*(7+Math.random()*8))};
+  S.ships.push({m,X,Y,Z:same?-.2:13,yaw:same?0:Math.PI,roll:(Math.random()-.5)*.5,spd,same,t:0,kill:0,
+    tl:Math.min(9,C.L*(7+Math.random()*8))});
 }
 function shipStep(dt,dn){
-  const sh=S.ship;
-  if(S.mode==='idle'||S.arrived){S.ship=null;return}
-  if(sh){
+  if(S.mode==='idle'||S.arrived){S.ships.length=0;S.shQ.length=0;return}
+  for(const sh of S.ships){
     sh.t+=dt;const f=[Math.sin(sh.yaw),Math.cos(sh.yaw)];sh.X+=f[0]*sh.spd*dt;sh.Z+=f[1]*sh.spd*dt;
     if(S.v<5)sh.kill+=dt*.4;
     if(S.turn||dn<DROP_D+.12)sh.kill+=dt*2.5;
     const sx=Math.abs(sh.X/Math.max(.05,sh.Z))*Math.sqrt(W*W+H*H)*.38;
-    if(sh.kill>=1||sh.t>45||(sh.same&&sh.Z>14)||(!sh.same&&(sh.Z<.3+sh.m.L*.5||sx>W*1.1+sh.m.L/Math.max(.2,sh.Z)*400))){S.ship=null;S.shWait=(FQB.ship[0]+Math.random()*(FQB.ship[1]-FQB.ship[0]))/Math.max(.05,CFG.fq.ship)}
-    return;
+    sh.dead=sh.kill>=1||sh.t>45||(sh.same&&sh.Z>14)||(!sh.same&&(sh.Z<.3+sh.m.L*.5||sx>W*1.1+sh.m.L/Math.max(.2,sh.Z)*400));
   }
-  if(S.v<=15||CFG.fq.ship<=0)return;
+  if(S.ships.some(o=>o.dead))S.ships=S.ships.filter(o=>!o.dead);
+  if(CFG.fq.ship<=0){S.shQ.length=0;return}
+  if(S.v<=15)return;
   S.shWait-=dt;
-  if(S.shWait<=0&&!S.turn&&dn>DROP_D+.55)shipSpawn();
+  if(S.shWait<=0){   // 무리 결정: 다음 무리 시점 T, 대수 N, 각 우주선은 T의 40~160% 시점에 등장
+    const T=shInterval(),n=shPickN(CFG.shMax);
+    for(let i=0;i<n;i++)S.shQ.push({t:T*(.4+1.2*Math.random())});
+    S.shWait=T;
+  }
+  for(const q of S.shQ)q.t-=dt;
+  if(S.shQ.some(q=>q.t<=0)){S.shQ=S.shQ.filter(q=>{if(q.t>0)return true;if(S.ships.length<SHCAP)shipSpawn();return false})}   // 정해진 시점에 그대로 등장 (회전 중이어도 취소하지 않는다)
 }
 function curvK(){return clamp(S.curW*CURVE_GAIN/(FLY_K*Math.max(S.v,20)),-.12,.12)}   // 시선 방향 단위 길이당 도로의 굽이 (우회전 +)
-function drawShip(cx0,cy0,F0){
-  const sh=S.ship;if(!sh)return;
+function drawShip(cx0,cy0,F0){S.ships.slice().sort((a,b)=>b.Z-a.Z).forEach(sh=>drawShip1(sh,cx0,cy0,F0))}   // 먼 우주선부터 그린다
+function drawShip1(sh,cx0,cy0,F0){
   const m=sh.m,L=m.L,NEAR=.14;
   if(sh.Z<NEAR+L*.5)return;
   const a=clamp(sh.t/.7,0,1)*(1-clamp(sh.kill,0,1));
@@ -2133,14 +2149,16 @@ function cfgSync(){
   $('cfgFlyV').textContent='×'+CFG.fly.toFixed(2);$('cfgStV').textContent='×'+CFG.st.toFixed(2);
   $('cfgFqF').value=Math.round(CFG.fq.fly*100);$('cfgFqS').value=Math.round(CFG.fq.ship*100);
   $('cfgFqFV').textContent=fqTxt('fly',CFG.fq.fly);$('cfgFqSV').textContent=fqTxt('ship',CFG.fq.ship);
+  $('cfgShM').value=CFG.shMax;$('cfgShMV').textContent='최대 '+CFG.shMax+'대';
 }
 cfgMarks('cfgFlyM',.5,3,['0.5','1','2','3']);cfgMarks('cfgStM',.1,3,['0.1','1','2','3']);
 $('cfgFly').oninput=e=>{CFG.fly=e.target.value/100;cfgSync();cfgSave()};
 $('cfgSt').oninput=e=>{CFG.st=e.target.value/100;cfgSync();cfgSave()};
-cfgMarks('cfgFqFM',0,3,['0','1','2','3']);cfgMarks('cfgFqSM',0,3,['0','1','2','3']);
+cfgMarks('cfgShMM',1,6,['1','2','3','4','5','6']);cfgMarks('cfgFqFM',0,3,['0','1','2','3']);cfgMarks('cfgFqSM',0,3,['0','1','2','3']);
 $('cfgFqF').oninput=e=>{CFG.fq.fly=e.target.value/100;S.flyWait=Math.min(S.flyWait,(16+Math.random()*26)/Math.max(.05,CFG.fq.fly));cfgSync();cfgSave()};
-$('cfgFqS').oninput=e=>{CFG.fq.ship=e.target.value/100;S.shWait=Math.min(S.shWait,(FQB.ship[0]+Math.random()*(FQB.ship[1]-FQB.ship[0]))/Math.max(.05,CFG.fq.ship));cfgSync();cfgSave()};
-$('cfgReset').onclick=()=>{CFG.fly=1;CFG.st=1;CFG.fq.fly=1;CFG.fq.ship=1.3;cfgSync();cfgSave()};
+$('cfgFqS').oninput=e=>{CFG.fq.ship=e.target.value/100;S.shWait=Math.min(S.shWait,shInterval());cfgSync();cfgSave()};
+$('cfgShM').oninput=e=>{CFG.shMax=+e.target.value;cfgSync();cfgSave()};
+$('cfgReset').onclick=()=>{CFG.fly=1;CFG.st=1;CFG.fq.fly=1;CFG.fq.ship=1.3;CFG.shMax=6;cfgSync();cfgSave()};
 $('bCfg').onclick=$('bCfg0').onclick=()=>{cfgSync();$('cfg').classList.remove('hide')};
 const cfgClose=()=>{$('cfg').classList.add('hide');if(S.toastTest)hideToast()};
 $('cfgClose').onclick=cfgClose;
