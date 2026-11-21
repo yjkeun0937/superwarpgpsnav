@@ -904,6 +904,7 @@ function drawElev(b,x,y,r,t){
   for(let k=0;k<4;k++){const f=((t*.035+k/4)%1),px=x0+(x1-x0)*f,py=y0+(y1-y0)*f;glowDisc(px,py,0,r*.07,'255,210,140',.9,0);cx.fillStyle='rgba(255,250,235,.95)';cx.fillRect(px-r*.012,py-r*.012,r*.024,r*.024)}
   cx.restore();
   drawStation(b.est,{x:x1,y:y1,z:0},r*1.7,t,a,bodyLight(b).L);
+  drawTraffic({x:x1,y:y1,z:0},b.est,r*1.7,r,t,b.seed+9,null);
 }
 /* 기계(행성도시) 행성 */
 function* genMachine(b){
@@ -1031,8 +1032,29 @@ const rotM=(ax,a)=>{const c=Math.cos(a),s=Math.sin(a);return ax==='x'?[[1,0,0],[
 const mm=(A,B)=>A.map((_,i)=>[0,1,2].map(j=>A[i][0]*B[0][j]+A[i][1]*B[1][j]+A[i][2]*B[2][j]));
 const LDIR=(()=>{const v=[-.5,.55,.67],l=Math.hypot(...v);return v.map(x=>x/l)})();
 function stationPos(b,x,y,r,t){
-  const a=t*.27+b.seed*.37,rho=r*(b.ring?2.3:1.62);
+  /* 공전 속도는 예전(.27 rad/s)의 1/4. 행성이 아직 작을 때는 시간을 멈춰 두었다가 어느 정도 커지면 움직이기 시작한다.
+     처음 위치는 행성 앞쪽 반원(z>0)의 1/4~3/4 구간(π/4~3π/4)에서 정한다 */
+  if(b.stT0==null||r<Math.min(W,H)*.1)b.stT0=t;
+  const a=Math.PI/4+Math.PI/2*hash(b.seed*7+31)+(t-b.stT0)*.0675,rho=r*(b.ring?2.3:1.62);
   return{x:x+Math.cos(a)*rho,y:y+Math.sin(a)*rho*.3-rho*.04,z:Math.sin(a)};
+}
+/* 정거장을 드나드는 빛무리: 정거장 크기의 2배쯤 떨어진 곳에서 나타나 정거장으로 가거나, 정거장에서 출발해 그만큼 떨어진 곳에서 사라진다. 속도는 위성과 비슷(행성 반지름의 약 .13배/초) */
+const dotS=r=>Math.max(.75,r*.014)*Math.min(1,.55+r/160);
+function drawTraffic(sp,st,rS,rP,t,seed,hide){
+  const s=rS*st.size*(1+.32*sp.z),dist=s*2.2,tr=dist/Math.max(1,rP*.13),ds=dotS(rP),hs=ds*3.2,H=new Path2D(),D=new Path2D(),B=new Path2D();let n=0;
+  for(let i=0;i<7;i++){
+    const P=tr+1.2+4*hash(seed*17+i*131+5),per=P,off=hash(seed*23+i*77+9)*P,k=Math.floor((t+off)/per),u=((t+off)%per)/tr;
+    if(u>=1)continue;
+    const th=hash(seed*3+i*5309+k*17911)*6.2832,ph=(hash(seed*5+i*3107+k*11317+1)-.5)*1.6,inw=hash(seed*7+i*9719+k*3733+2)<.5;
+    const f=inw?1-u:u,d=dist*f,px=sp.x+Math.cos(th)*Math.cos(ph)*d,py=sp.y-Math.sin(th)*Math.cos(ph)*d,al=Math.max(0,Math.min(1,u/.15,(1-u)/.2));
+    if(hide&&Math.hypot(px-hide.x,py-hide.y)<hide.r)continue;   // 행성 뒤에서는 가려진다
+    if(al<.98){cx.save();cx.globalCompositeOperation='lighter';cx.globalAlpha*=al;cx.fillStyle='rgba(255,226,170,.8)';cx.beginPath();cx.arc(px,py,hs/2,0,6.2832);cx.fill();cx.fillStyle='rgba(255,190,110,.18)';cx.beginPath();cx.arc(px,py,hs,0,6.2832);cx.fill();cx.restore();continue}
+    H.moveTo(px+hs/2,py);H.arc(px,py,hs/2,0,6.2832);(.65+.35*Math.sin(t*2.3+i*1.9+k)>.8?B:D).rect(px-ds/2,py-ds/2,ds,ds);n++;
+  }
+  if(!n)return;
+  cx.save();cx.globalCompositeOperation='lighter';
+  cx.fillStyle='rgba(255,190,110,.14)';cx.fill(H);cx.fillStyle='rgba(255,226,170,.7)';cx.fill(D);cx.fillStyle='rgba(255,250,225,1)';cx.fill(B);
+  cx.restore();
 }
 function drawStation(st,sp,r,t,al,Lv){
   Lv=Lv||LDIR;   // al: 케이블 방향(화면 각도). 주면 정팔면체의 위·아래 꼭짓점 축이 케이블 연장선에 놓인다
@@ -1545,7 +1567,7 @@ function drawPlanet(b,x,y,r,t){
   const RN=b.ring,ST=b.st,OR=b.o.oring,EL=b.o.elev;
   if(OR)r*=.66;else if(EL)r*=.6;else if(RN&&ST)r*=.58;else if(RN)r*=.7;else if(ST)r*=.68;
   if(!b.ready){placeholder(b,x,y,r);return}
-  const rot=t*(b.kind==='gas'?.018:.012)+b.seed*.0013;
+  const rot=t*(b.kind==='gas'?.009:.006)+b.seed*.0013;   // 자전 속도는 예전의 절반
   const LT=bodyLight(b).L,SAT=(b.kind==='earth'||b.kind==='machine')&&!OR;
   if(SAT)drawSats(b,x,y,r,t,false);   // 위성 불빛: 고리·정거장·궤도환보다 먼저 그려서 그것들이 가려지지 않게 한다
   let sp=null;if(ST){sp=stationPos(b,x,y,r,t);if(sp.z<0)drawStation(b.st,sp,r,t,null,LT)}
@@ -1579,12 +1601,13 @@ function drawPlanet(b,x,y,r,t){
   if(OR)drawOring(b,x,y,r,true,t);
   if(EL)drawElev(b,x,y,r,t);
   if(sp&&sp.z>=0)drawStation(b.st,sp,r,t,null,LT);
+  if(sp)drawTraffic(sp,b.st,r,r,t,b.seed,sp.z<0?{x,y,r}:null);
 }
 
 /* 위성 궤도의 빛 알갱이 (지구형·기계 행성). 디테일 없이 점으로만 */
 function drawSats(b,x,y,r,t,front){
   if(!b.sat){const q=mulberry32(b.seed+211);b.sat=Array.from({length:30+Math.floor(q()*14)},()=>({R:1.12+.55*q(),inc:(q()-.5)*2.2,nd:q()*6.2832,th:q()*6.2832,w:(.1+.08*q())*(q()<.5?-1:1),ph:q()*6.2832}))}
-  const s=Math.max(.75,r*.014)*Math.min(1,.55+r/160),hs=s*3.2,H=new Path2D(),D=new Path2D(),B=new Path2D();let n=0;
+  const s=dotS(r),hs=s*3.2,H=new Path2D(),D=new Path2D(),B=new Path2D();let n=0;
   for(const q of b.sat){
     const th=q.th+q.w*t/Math.pow(q.R,1.5),a=q.R*Math.cos(th),c=q.R*Math.sin(th),y3=c*Math.cos(q.inc),z=c*Math.sin(q.inc),cn=Math.cos(q.nd),sn=Math.sin(q.nd),X=a*cn-y3*sn,Y=a*sn+y3*cn;
     if((z>=0)!==front)continue;
@@ -2581,7 +2604,9 @@ function msgTest(k){const m=MSAMPLE()[k];showCat(k,m[0],m[1],4000);S.toastTest=C
 cfgSync();msgBuild();
 /* 등장 천체 목록 */
 const BGRP=[[['행성','PLANET'],['earth','barren','gas','city','machine']],[['항성','STAR'],['star']],[['블랙홀·펄서·퀘이사','EXTREME'],['hole','pulsar','quasar']],[['은하·성운','DEEP SKY'],['galaxy','neb','pneb']],[['소행성대','BELT'],['asteroid']]];
-const btag=p=>{const o=typeof p[2]==='object'?p[2]:{},t=[];if(o.oring)t.push(L('궤도환','orbital ring'));if(o.elev)t.push(L('엘리베이터','elevator'));if(o.ring)t.push(L('고리','ring'));if(o.st)t.push(L('정거장','station'));if(o.lava)t.push(L('용암','lava'));if(p[1]==='machine')t.push(L('기계도시','machine city'));if(p[1]==='city')t.push(L('도시','city'));return t};
+const btag=p=>{const o=typeof p[2]==='object'?p[2]:{},t=[];if(o.oring)t.push(L('궤도환','orbital ring'));if(o.elev)t.push(L('엘리베이터','elevator'));if(o.ring)t.push(L('고리','ring'));if(o.st)t.push(L('정거장','station'));if(o.lava)t.push(L('용암','lava'));if(p[1]==='star'){const SN={Y:['황색왜성','yellow dwarf'],R:['적색초거성','red supergiant'],B:['청색거성','blue giant'],W:['백색왜성','white dwarf'],K:['주황색왜성','orange dwarf'],Bin:['쌍성','binary']}[p[2]];if(SN)t.push(L(SN[0],SN[1]))}
+  if(p[1]==='hole')t.push(L('강착원반','accretion disk'));if(p[1]==='pulsar')t.push(L('회전 빔','spinning beam'),L('자기장','magnetic field'));if(p[1]==='quasar')t.push(L('상대론적 제트','relativistic jets'),L('강착원반','accretion disk'));
+  if(p[1]==='machine')t.push(L('기계도시','machine city'));if(p[1]==='city')t.push(L('도시','city'));return t};
 function bdBuild(){
   $('bdList').innerHTML=BGRP.map(([nm,ks],gi)=>{const items=BODIES.filter(p=>ks.includes(p[1]));
     return `<div class="bgrp"><span>${L(nm[0],nm[1])} <small data-gc="${gi}"></small></span><button class="bt" data-g="${gi}" data-v="1" type="button">${L('켜기','ON')}</button><button class="bt" data-g="${gi}" data-v="0" type="button">${L('끄기','OFF')}</button></div>`+
