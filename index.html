@@ -457,20 +457,20 @@ const S={mode:'idle',running:false,t:0,s:0,v:0,vAvg:50,total:0,maneuvers:[],idx:
   curW:0,cp1:0,cp2:0,fly:null,flyNext:null,flyWait:10,ships:[],shQ:[],shWait:4,departed:false,arrNote:false,toastTest:false};
 
 /* ---------------- 천체 ---------------- */
-const BEN={'케플러-442b':'Kepler-442b','프록시마 b':'Proxima b','HD 209458 b':'HD 209458 b','TOI-700 d':'TOI-700 d','알파 센타우리 A':'Alpha Centauri A','백조자리 X-1':'Cygnus X-1','오리온 성운':'Orion Nebula','글리제 581 g':'Gliese 581 g','PSR B1919+21':'PSR B1919+21','안드로메다 은하':'Andromeda Galaxy','코러스칸 프라임':'Koruskan Prime','베텔게우스':'Betelgeuse','에리다누스 ε':'Eridanus ε','3C 273':'3C 273','베스타 소행성대':'Vesta Belt','LHS 1140 b':'LHS 1140 b','리겔':'Rigel','TRAPPIST-1e':'TRAPPIST-1e','고리 성운':'Ring Nebula','오리온 KL-7':'Orion KL-7','시리우스 B':'Sirius B','바람개비 은하':'Pinwheel Galaxy','네오 아르카디아':'Neo Arcadia','알비레오':'Albireo','55 Cancri e':'55 Cancri e','솜브레로 은하':'Sombrero Galaxy','고래자리 τ':'Tau Ceti','세레스 군':'Ceres Cluster','에리다누스 K2':'Eridanus K2','독수리 성운':'Eagle Nebula','HD 189733 b':'HD 189733 b','PSR J0437':'PSR J0437','3C 48':'3C 48','카펠라 (쌍성)':'Capella (binary)','헤일로-7 (궤도환)':'Halo-7 (orbital ring)','레이스 허브':'Wraith Hub','가니메데 환상 기지':'Ganymede Ring Base','네오 헬리오스 링':'Neo Helios Ring','아르고스 연산 행성':'Argos Compute World','제논 데이터 성채':'Xenon Data Citadel','모놀리스 메트로폴리스':'Monolith Metropolis','엘리시움 ε (궤도 엘리베이터)':'Elysium ε (space elevator)','아틀라스 승강 기지':'Atlas Lift Base','오리온 승강 도시':'Orion Lift City','신(新)지구':'New Earth'};   // 천체 이름(한국어 원본 → English). 원본 이름이 CONFIG의 끈 목록 키로 쓰인다
+const BEN={'케플러-442b':'Kepler-442b','프록시마 b':'Proxima b','HD 209458 b':'HD 209458 b','TOI-700 d':'TOI-700 d','알파 센타우리 A':'Alpha Centauri A','백조자리 X-1':'Cygnus X-1','오리온 성운':'Orion Nebula','글리제 581 g':'Gliese 581 g','PSR B1919+21':'PSR B1919+21','넥서스 펄서':'Nexus Pulsar','안드로메다 은하':'Andromeda Galaxy','코러스칸 프라임':'Koruskan Prime','베텔게우스':'Betelgeuse','에리다누스 ε':'Eridanus ε','3C 273':'3C 273','베스타 소행성대':'Vesta Belt','LHS 1140 b':'LHS 1140 b','리겔':'Rigel','TRAPPIST-1e':'TRAPPIST-1e','고리 성운':'Ring Nebula','오리온 KL-7':'Orion KL-7','시리우스 B':'Sirius B','바람개비 은하':'Pinwheel Galaxy','네오 아르카디아':'Neo Arcadia','알비레오':'Albireo','55 Cancri e':'55 Cancri e','솜브레로 은하':'Sombrero Galaxy','고래자리 τ':'Tau Ceti','세레스 군':'Ceres Cluster','에리다누스 K2':'Eridanus K2','독수리 성운':'Eagle Nebula','HD 189733 b':'HD 189733 b','PSR J0437':'PSR J0437','3C 48':'3C 48','카펠라 (쌍성)':'Capella (binary)','헤일로-7 (궤도환)':'Halo-7 (orbital ring)','레이스 허브':'Wraith Hub','가니메데 환상 기지':'Ganymede Ring Base','네오 헬리오스 링':'Neo Helios Ring','아르고스 연산 행성':'Argos Compute World','제논 데이터 성채':'Xenon Data Citadel','모놀리스 메트로폴리스':'Monolith Metropolis','엘리시움 ε (궤도 엘리베이터)':'Elysium ε (space elevator)','아틀라스 승강 기지':'Atlas Lift Base','오리온 승강 도시':'Orion Lift City','신(新)지구':'New Earth'};   // 천체 이름(한국어 원본 → English). 원본 이름이 CONFIG의 끈 목록 키로 쓰인다
 const bname=n=>CFG.lang==='en'&&BEN[n]||n;
 // [이름, 종류, 세부(문자열) 또는 옵션(객체)]  종류: earth barren gas city star hole pulsar quasar galaxy neb pneb asteroid
 const BODIES=[
  ['케플러-442b','earth'],['프록시마 b','barren'],['HD 209458 b','gas'],['TOI-700 d','earth',{ring:1}],
  ['알파 센타우리 A','star','Y'],['백조자리 X-1','hole'],['오리온 성운','neb'],
- ['글리제 581 g','earth',{st:'wheel'}],['PSR B1919+21','pulsar'],['안드로메다 은하','galaxy','spiral'],
+ ['글리제 581 g','earth',{st:'wheel'}],['PSR B1919+21','pulsar',{P:1.3373,al:45,ze:47,est:1}],['안드로메다 은하','galaxy','spiral'],
  ['코러스칸 프라임','city'],['베텔게우스','star','R'],['에리다누스 ε','gas',{ring:1}],
  ['3C 273','quasar'],['베스타 소행성대','asteroid'],['LHS 1140 b','earth',{st:'cube'}],
  ['리겔','star','B'],['TRAPPIST-1e','barren',{ring:1}],['고리 성운','pneb'],['오리온 KL-7','gas',{st:'octa'}],
  ['시리우스 B','star','W'],['바람개비 은하','galaxy','grand'],['네오 아르카디아','city',{st:'cube'}],
  ['알비레오','star','Bin'],['55 Cancri e','barren',{lava:1}],['솜브레로 은하','galaxy','sombrero'],
  ['고래자리 τ','gas',{st:'wheel',ring:1}],['세레스 군','asteroid'],['에리다누스 K2','star','K'],['독수리 성운','neb'],
- ['HD 189733 b','gas',{st:'octa'}],['PSR J0437','pulsar'],['3C 48','quasar'],['카펠라 (쌍성)','star','Bin'],
+ ['HD 189733 b','gas',{st:'octa'}],['PSR J0437','pulsar',{P:.005757,al:42,ze:136}],['3C 48','quasar'],['넥서스 펄서','pulsar',{fict:1}],['카펠라 (쌍성)','star','Bin'],
  ['헤일로-7 (궤도환)','earth',{oring:1}],['레이스 허브','barren',{oring:1}],['가니메데 환상 기지','gas',{oring:1}],['네오 헬리오스 링','city',{oring:1}],
  ['아르고스 연산 행성','machine'],['제논 데이터 성채','machine',{st:'octa'}],['모놀리스 메트로폴리스','machine'],
  ['엘리시움 ε (궤도 엘리베이터)','earth',{elev:1}],['아틀라스 승강 기지','barren',{elev:1}],['오리온 승강 도시','city',{elev:1}]];
@@ -1239,6 +1239,7 @@ function bodyDbg(b){
     try{it.push(L('어두운 면 ','dark ')+Math.round(bodyLight(b).dark*100)+'%')}catch(e){}
   }
   if(b.kind==='star'){const sw=hasSwarm(b);yn(!!sw,'다이슨 스웜'+(sw?' '+Math.round(sw.dens*100)+'%':''),'Dyson swarm'+(sw?' '+Math.round(sw.dens*100)+'%':''))}
+  if(b.kind==='pulsar'){const ps=pulsarPar(b),dg=v=>Math.round(v*180/Math.PI)+'°';it.push((ps.real?L('실제 값','real'):L('가상(무작위)','fictional (random)')),'α '+dg(ps.al),'ζ '+dg(ps.ze),'P '+(ps.P<.1?(ps.P*1000).toFixed(2)+' ms':ps.P.toFixed(2)+' s')+(ps.Pd>ps.P*1.01?L(' (표시 '+ps.Pd.toFixed(2)+'초, 느리게 재생)',' (shown '+ps.Pd.toFixed(2)+' s, slow-mo)'):''))}
   if(b.kind==='galaxy'&&b.gx)it.push(L('팔 ','arms ')+b.gx.arms);
   return{head:bname(b.name),sub:L(k[1],k[0])+(b.sub?' ['+b.sub+']':'')+' · seed '+b.seed+(b.ready?'':L(' · 생성 중',' · building')),items:it};
 }
@@ -1724,21 +1725,45 @@ function drawHole(b,x,y,r,t){
   cx.restore();
 }
 /* 펄서: 빠르게 회전하는 중성자별과 빔 */
+/* 펄서 기하: α=자전축과 자기축의 각, ζ=자전축과 시선의 각, P=자전 주기(초). 빔은 자기축(±m)을 따라 나가고 자전축을 중심으로 돈다.
+   실제 펄서(o.P가 있는 것)는 문헌값을 쓰고, 가상 펄서는 천체마다 무작위로 정한다. 화면에 보이는 주기 Pd는 너무 빠르면(ms 펄서) 느리게 돌려 보여 준다 */
+function pulsarPar(b){
+  if(b.ps)return b.ps;
+  const o=b.o||{},q=mulberry32(b.seed+77),d=Math.PI/180,ps={real:!!o.P};
+  if(ps.real){ps.al=o.al*d;ps.ze=o.ze*d;ps.P=o.P;ps.Pd=Math.max(o.P,.45)}
+  else{
+    ps.al=(6+84*q())*d;   // 6°~90°: 좁은 원뿔 ~ 자전축에 수직
+    ps.ze=q()<.6?Math.min(Math.PI,ps.al+(q()-.5)*.14):Math.acos((.25+.75*q())*(q()<.5?-1:1));   // 시선: 빔이 지나가는 경우(60%) 또는 자전축 쪽에서 비스듬히 보는 경우
+    ps.P=Math.exp(Math.log(.45)+q()*Math.log(6/.45));ps.Pd=ps.P;
+  }
+  const psi=q()*6.2832,sz=Math.sin(ps.ze),w=[sz*Math.cos(psi),sz*Math.sin(psi),Math.cos(ps.ze)],a=Math.abs(w[2])<.9?[0,0,1]:[1,0,0];
+  let e1=[w[1]*a[2]-w[2]*a[1],w[2]*a[0]-w[0]*a[2],w[0]*a[1]-w[1]*a[0]];const l=Math.hypot(...e1);e1=e1.map(v=>v/l);
+  const e2=[w[1]*e1[2]-w[2]*e1[1],w[2]*e1[0]-w[0]*e1[2],w[0]*e1[1]-w[1]*e1[0]];
+  ps.w=w;ps.e1=e1;ps.e2=e2;ps.ph=q()*6.2832;
+  return b.ps=ps;
+}
 function drawPulsar(b,x,y,r,t){
-  const th=t*2.6+b.seed,core=r*.11,fl=Math.pow(Math.max(0,Math.cos(th*2)),30);
+  const ps=pulsarPar(b),th=ps.ph+6.2832*t/ps.Pd,core=r*.11,ca=Math.cos(ps.al),sa=Math.sin(ps.al),c=Math.cos(th),sn=Math.sin(th);
+  const m=[0,1,2].map(k=>ca*ps.w[k]+sa*(c*ps.e1[k]+sn*ps.e2[k]));   // 자기축 (x 오른쪽, y 위, z 관측자 쪽)
+  const fl=sstep(.975,1,Math.max(m[2],-m[2]));   // 빔이 시선 방향을 지나갈 때 번쩍인다
   cx.save();cx.globalCompositeOperation='lighter';
   glowDisc(x,y,0,r*1.8,'90,140,255',.28,0);
-  // 자기장 선
-  cx.lineWidth=Math.max(1,r*.012);
-  for(let k=0;k<5;k++){const sc=.45+k*.16;cx.strokeStyle=`rgba(130,180,255,${.34-.04*k})`;cx.save();cx.translate(x,y);cx.rotate(th*.0+.45);
-    cx.beginPath();cx.ellipse(-r*sc*.18,0,r*sc*.5,r*sc*1.1,0,0,6.2832);cx.stroke();cx.beginPath();cx.ellipse(r*sc*.18,0,r*sc*.5,r*sc*1.1,0,0,6.2832);cx.stroke();cx.restore()}
-  // 회전 빔 (등대처럼 훑고 지나간다)
-  for(let i=0;i<2;i++){
-    const a=th+i*Math.PI,L=Math.max(W,H)*.85,w=r*.075,ca=Math.cos(a),sa=Math.sin(a);
-    const gr=cx.createLinearGradient(x,y,x+ca*L,y+sa*L);gr.addColorStop(0,'rgba(200,225,255,.9)');gr.addColorStop(.3,'rgba(120,170,255,.4)');gr.addColorStop(1,'rgba(90,130,255,0)');
-    cx.fillStyle=gr;cx.beginPath();cx.moveTo(x-sa*core*.6,y+ca*core*.6);cx.lineTo(x+ca*L-sa*w,y+sa*L+ca*w);cx.lineTo(x+ca*L+sa*w,y+sa*L-ca*w);cx.lineTo(x+sa*core*.6,y-ca*core*.6);cx.closePath();cx.fill();
+  // 회전 빔: 원뿔 두 개(자기축 ±). 투영되어 짧아 보이는 빔은 폭이 그대로라 굵은 빛무리가 된다
+  const Lf=Math.max(W,H)*.85,w1=Lf*.075;
+  for(const sg of[-1,1]){
+    const dx=sg*m[0],dy=-sg*m[1],dz=sg*m[2],pl=Math.hypot(dx,dy),dim=dz<0?.62:1,ex=x+dx*Lf,ey=y+dy*Lf;
+    glowDisc(x,y,0,w1*(1-pl)*.9+core*1.5,'120,205,230',.34*(1-pl)*dim,0);   // 정면으로 향한 빔의 빛무리
+    if(pl<.04)continue;
+    const nx=-dy/pl,ny=dx/pl,w0=core*.45;
+    const gr=cx.createLinearGradient(x,y,ex,ey);gr.addColorStop(0,`rgba(130,215,235,${.5*dim})`);gr.addColorStop(.35,`rgba(80,175,205,${.26*dim})`);gr.addColorStop(1,'rgba(60,150,190,0)');
+    cx.fillStyle=gr;cx.beginPath();cx.moveTo(x-nx*w0,y-ny*w0);cx.lineTo(ex-nx*w1,ey-ny*w1);cx.lineTo(ex+nx*w1,ey+ny*w1);cx.lineTo(x+nx*w0,y+ny*w0);cx.closePath();cx.fill();
+    const g2=cx.createLinearGradient(x,y,ex,ey);g2.addColorStop(0,`rgba(235,245,255,${.95*dim})`);g2.addColorStop(.3,`rgba(190,225,255,${.5*dim})`);g2.addColorStop(1,'rgba(150,200,255,0)');
+    const wc=Math.max(core*.22,1.2);cx.fillStyle=g2;cx.beginPath();cx.moveTo(x-nx*wc,y-ny*wc);cx.lineTo(ex-nx*wc*.5,ey-ny*wc*.5);cx.lineTo(ex+nx*wc*.5,ey+ny*wc*.5);cx.lineTo(x+nx*wc,y+ny*wc);cx.closePath();cx.fill();
   }
   glowDisc(x,y,0,r*(.5+.9*fl),'190,220,255',.7+.3*fl,0);
+  cx.restore();
+  cx.save();cx.lineWidth=Math.max(.8,r*.006);   // 중성자별 둘레의 가는 고리
+  for(const [k,col] of [[1.9,'205,90,200'],[2.5,'150,90,230']]){cx.strokeStyle=`rgba(${col},.55)`;cx.beginPath();cx.arc(x,y,core*k,0,6.2832);cx.stroke()}
   cx.restore();
   glowDisc(x,y,0,core*2.2,'210,230,255',1,0);cx.fillStyle='#fff';circPath(x,y,core);cx.fill();
   if(fl>.2){cx.save();cx.globalCompositeOperation='lighter';cx.fillStyle=`rgba(210,230,255,${fl*.18})`;cx.fillRect(0,0,W,H);cx.restore()}
@@ -2605,7 +2630,7 @@ cfgSync();msgBuild();
 /* 등장 천체 목록 */
 const BGRP=[[['행성','PLANET'],['earth','barren','gas','city','machine']],[['항성','STAR'],['star']],[['블랙홀·펄서·퀘이사','EXTREME'],['hole','pulsar','quasar']],[['은하·성운','DEEP SKY'],['galaxy','neb','pneb']],[['소행성대','BELT'],['asteroid']]];
 const btag=p=>{const o=typeof p[2]==='object'?p[2]:{},t=[];if(o.oring)t.push(L('궤도환','orbital ring'));if(o.elev)t.push(L('엘리베이터','elevator'));if(o.ring)t.push(L('고리','ring'));if(o.st)t.push(L('정거장','station'));if(o.lava)t.push(L('용암','lava'));if(p[1]==='star'){const SN={Y:['황색왜성','yellow dwarf'],R:['적색초거성','red supergiant'],B:['청색거성','blue giant'],W:['백색왜성','white dwarf'],K:['주황색왜성','orange dwarf'],Bin:['쌍성','binary']}[p[2]];if(SN)t.push(L(SN[0],SN[1]))}
-  if(p[1]==='hole')t.push(L('강착원반','accretion disk'));if(p[1]==='pulsar')t.push(L('회전 빔','spinning beam'),L('자기장','magnetic field'));if(p[1]==='quasar')t.push(L('상대론적 제트','relativistic jets'),L('강착원반','accretion disk'));
+  if(p[1]==='hole')t.push(L('강착원반','accretion disk'));if(p[1]==='pulsar'){t.push(L('회전 빔','spinning beam'));if(o.P){t.push(L('주기 ','P ')+(o.P<.1?(o.P*1000).toFixed(3)+' ms':o.P.toFixed(3)+' s'),'α '+o.al+'°'+(o.est?L(' (추정)',' (est.)'):''));}else t.push(L('가상 · 각도·주기 무작위','fictional · random angle & period'))}if(p[1]==='quasar')t.push(L('상대론적 제트','relativistic jets'),L('강착원반','accretion disk'));
   if(p[1]==='machine')t.push(L('기계도시','machine city'));if(p[1]==='city')t.push(L('도시','city'));return t};
 function bdBuild(){
   $('bdList').innerHTML=BGRP.map(([nm,ks],gi)=>{const items=BODIES.filter(p=>ks.includes(p[1]));
