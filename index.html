@@ -46,6 +46,11 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 @media (max-width:400px){#dst{--sh:27px}#eta{--sh:16px}#rdist .eta .lb{font-size:10px}#navD{--sh:16px}#thenD{--sh:11px}#navR .unit{font-size:15px}}
 @media (max-width:340px){#dst{--sh:22px}#eta{--sh:13px}#navD{--sh:14px}#thenD{--sh:10px}#rdist .unit{font-size:16px}}
 #navR .unit{font-size:17px;padding-bottom:0}
+/* 거리 단위: LY·AU를 모두 그려 두고 현재 단위만 점등 (속도의 MACH/C와 같은 방식) */
+.un{display:inline-flex;align-items:flex-end;gap:5px}
+.un span{opacity:.22;transition:opacity .25s,text-shadow .25s}
+.un span.on{opacity:1;text-shadow:0 0 7px currentColor}
+#thenNm{margin:2px var(--rdw3,84px) 0 31px;font:13px 'VT323','Nanum Gothic Coding',monospace;color:#a8802a;text-shadow:0 1px 3px #000;line-height:1.2}
 #navR .tm{padding-bottom:0}
 #navR[hidden]{display:none}
 /* 길어서 영역을 넘는 글은 고정 폭 안에서 좌우로 천천히 오간다 */
@@ -280,13 +285,14 @@ html[lang=en] #toast b{font-size:30px}
           <div class="l1 mqc" id="navL1"><span>STANDBY</span></div>
           <div class="l2 mqc" id="navL2"><span>대기 중 — SETUP에서 항로를 설정하세요</span></div>
           <div class="l3 mqc" id="navL3"><span>&nbsp;</span></div>
-          <div class="l3" id="navR" hidden><span class="tm">T-</span><span class="sd" id="navD"></span><span class="unit">LY</span></div>
+          <div class="l3" id="navR" hidden><span class="tm">T-</span><span class="sd" id="navD"></span><span class="unit un" id="navU"><span class="on">LY</span><span>AU</span></span></div>
         </div>
       </div>
       <div id="then"><svg id="thenSvg" viewBox="0 0 100 100" shape-rendering="crispEdges"></svg><span class="mqc" id="thenTx"><span></span></span><span class="thd"><span class="sd" id="thenD"></span><span class="unit">LY</span></span></div>
+      <div id="thenNm" class="mqc"><span></span></div>
       <div id="rdist">
         <div class="lb" data-en="DISTANCE">잔여 거리</div>
-        <div class="row"><span class="sd" id="dst"></span><span class="unit">LY</span></div>
+        <div class="row"><span class="sd" id="dst"></span><span class="unit un" id="rdU"><span class="on">LY</span><span>AU</span></span></div>
         <div class="eta"><span class="lb" data-en="ETA T-">도착까지 T-</span><span class="sd" id="eta"></span></div>
       </div>
       </div>
@@ -531,7 +537,7 @@ const put=(d,o,r,g,b,a)=>{d[o]=r;d[o+1]=g;d[o+2]=b;d[o+3]=a==null?255:a};
    점을 쌓은 뒤 포화되지 않는 곡선으로 밝기를 매기므로, 중심은 밝고 가장자리는 점점이 흩어진다. */
 function* genLights(b,sd,LA,P){
   const W=1024,H=512,r=mulberry32(b.seed+91+(P.salt||0)),acc=new Float32Array(W*H),tmp=new Float32Array(W*H);
-  const cosl=py=>1/Math.max(.3,Math.cos((py/H-.5)*Math.PI));   // 위도가 높을수록 가로로 늘려 둥글게 보이게 한다
+  const cosl=py=>1/Math.max(.3,Math.cos((py/H-.5)*Math.PI)),vf=()=>1;   // 위도가 높을수록 가로로 늘려 둥글게 보이게 한다 (사용자 확인을 받은 모양이라 그대로 둠)
   const splat=(px,py,w,T)=>{
     const x0=Math.floor(px),y0=Math.floor(py),fx=px-x0,fy=py-y0;
     for(let j=0;j<2;j++){const y=y0+j;if(y<0||y>=H)continue;const wy=j?fy:1-fy;
@@ -556,9 +562,9 @@ function* genLights(b,sd,LA,P){
     const N=Math.floor(P.d0+P.dm*Math.pow(c.s,.9)),ca=Math.cos(c.ang),sa=Math.sin(c.ang),cl=cosl(c.y);
     for(let n=0;n<N;n++){
       const rr=c.R*Math.pow(r(),2),a=r()*6.2832;let ox=rr*Math.cos(a)*c.el,oy=rr*Math.sin(a);
-      const X=c.x+(ox*ca-oy*sa)*cl,Y=c.y+(ox*sa+oy*ca);
+      const X=c.x+(ox*ca-oy*sa)*cl,Y=c.y+(ox*sa+oy*ca)*vf(c.y);
       const nw=(vn(X*.0625,Y*.0625,64,sd+3)-.5)*c.R*.9,nw2=(vn(X*.0625+9,Y*.0625,64,sd+4)-.5)*c.R*.9;
-      const q=r();dot(X+nw*cl,Y+nw2,.3+.7*q*q,c.T+(r()-.5)*.12);
+      const q=r();dot(X+nw*cl,Y+nw2*vf(c.y),.3+.7*q*q,c.T+(r()-.5)*.12);
     }
     yield;
   }
@@ -573,8 +579,8 @@ function* genLights(b,sd,LA,P){
       for(let i=0;i<n;i++){
         const t=r(),mx=c.x+(ex-c.x)*t,my=c.y+(o.y-c.y)*t,bow=Math.sin(t*3.1416)*(vn(t*5+ph,k,64,sd+7)-.5)*len*.5;
         const nx=-(o.y-c.y)/len,ny=(ex-c.x)/len,jit=(r()+r()+r()-1.5)*3;
-        const X=mx+(nx*(bow+jit))*cosl(my),Y=my+ny*(bow+jit),T=c.T*.5+o.T*.5;
-        if(r()<.14){const m=3+Math.floor(r()*6);for(let q=0;q<m;q++)dot(X+(r()-.5)*7*cosl(Y),Y+(r()-.5)*7,.3+.3*r(),T)}   // 마을 하나가 몇 점으로 보이게
+        const X=mx+(nx*(bow+jit))*cosl(my),Y=my+ny*(bow+jit)*vf(my),T=c.T*.5+o.T*.5;
+        if(r()<.14){const m=3+Math.floor(r()*6);for(let q=0;q<m;q++)dot(X+(r()-.5)*7*cosl(Y),Y+(r()-.5)*7*vf(Y),.3+.3*r(),T)}   // 마을 하나가 몇 점으로 보이게
         else dot(X,Y,.18+.35*r(),T);
       }
     }
@@ -586,8 +592,8 @@ function* genLights(b,sd,LA,P){
       const px=r()*W,py=(.12+.76*r())*H,tt=LA(px/W,py/H);if(tt<.02||r()>(.3+.7*sstep(.34,.5,LA.m)))continue;
       const T=r(),nk=3+Math.floor(r()*5);
       for(let a=0;a<nk;a++){
-        const cx1=px+(r()+r()-1)*34*cosl(py),cy1=py+(r()+r()-1)*34,ng=2+Math.floor(r()*5);
-        for(let g=0;g<ng;g++)dot(cx1+(r()+r()-1)*7*cosl(cy1),cy1+(r()+r()-1)*7,.12+.3*r(),T);
+        const cx1=px+(r()+r()-1)*34*cosl(py),cy1=py+(r()+r()-1)*34*vf(py),ng=2+Math.floor(r()*5);
+        for(let g=0;g<ng;g++)dot(cx1+(r()+r()-1)*7*cosl(cy1),cy1+(r()+r()-1)*7*vf(cy1),.12+.3*r(),T);
       }
       if(i%40===0)yield;
     }
@@ -656,13 +662,16 @@ function* genBarren(b){
     if(lava){const rd=Math.abs(fbm(u*9+2,v*4.5,9,4,sd+9)-.5),k=clamp(1-rd/.028,0,1);R+=k*255;G+=k*120;B+=k*20}
     put(d,o,R,G,B);
   },(g)=>{
+    /* 구 메시의 세로 좌표는 sin(위도)에 비례(가로는 경도에 비례)하므로 지도 위의 원은 구에서 타원이 된다.
+       구 위에서 원이 되도록 지도에서는 가로 1/cos(위도), 세로 (256/(512/2π))·cos(위도)=1.571·cos(위도) 배의 타원으로 그린다 */
     for(let i=0;i<110;i++){
-      const cxp=r()*512,cyp=r()*256,rad=2+Math.pow(r(),2.4)*22;
+      const cxp=r()*512,cyp=(.03+r()*.94)*256,rad=2+Math.pow(r(),2.4)*22,cl=Math.sqrt(Math.max(.01,1-Math.pow(1-2*cyp/256,2))),sx=1/cl,sy=1.571*cl;
       for(const dx of[0,-512,512]){
-        const px=cxp+dx;if(px<-rad*1.5||px>512+rad*1.5)continue;
-        const gr=g.createRadialGradient(px-rad*.18,cyp-rad*.18,rad*.1,px,cyp,rad);
+        const px=cxp+dx;if(px<-rad*sx*1.5||px>512+rad*sx*1.5)continue;
+        g.save();g.translate(px,cyp);g.scale(sx,sy);
+        const gr=g.createRadialGradient(-rad*.18,-rad*.18,rad*.1,0,0,rad);
         gr.addColorStop(0,'rgba(0,0,0,.34)');gr.addColorStop(.8,'rgba(0,0,0,.18)');gr.addColorStop(.93,'rgba(255,240,220,.26)');gr.addColorStop(1,'rgba(255,240,220,0)');
-        g.fillStyle=gr;g.beginPath();g.arc(px,cyp,rad,0,6.283);g.fill();
+        g.fillStyle=gr;g.beginPath();g.arc(0,0,rad,0,6.283);g.fill();g.restore();
       }
     }
   });
@@ -1235,31 +1244,37 @@ function genShip(ci,seed){
   const HUE=[[150,162,180],[178,152,122],[128,150,172],[158,170,150],[192,192,204]][Math.floor(r()*5)];
   const ACC=[[226,72,52],[240,172,42],[62,164,232],[92,202,124]][Math.floor(r()*4)];
   const sh=(c,k)=>c.map(x=>Math.min(255,x*k));
-  const quad=(a,b,c,d,col,k)=>F.push({p:[a,b,c,d],c:col,k:k||0});
-  const tri=(a,b,c,col,k)=>F.push({p:[a,b,c],c:col,k:k||0});
-  const box=(x,y,z,hx,hy,hz,col,k)=>{const P=(a,b,c)=>[x+a*hx,y+b*hy,z+c*hz];
+  /* 면은 부품(part) 단위로 묶는다. 닫힌 입체 부품은 중심에서 바깥을 향하는 면만 그리고(뒷면 제거), 부품끼리는 카메라와의 거리순으로 그려
+     길고 큰 선체에서 면 중심 깊이만으로 정렬하던 때의 순서 오류를 없앤다. 창문·갑판 줄무늬는 얹힌 부품에 속한다 */
+  const PT=[];let pid=0;
+  const part=(c,cull)=>{PT.push({c:c||null,cull:cull!==false});pid=PT.length-1};
+  const quad=(a,b,c,d,col,k)=>F.push({p:[a,b,c,d],c:col,k:k||0,pt:pid});
+  const tri=(a,b,c,col,k)=>F.push({p:[a,b,c],c:col,k:k||0,pt:pid});
+  const fin=(a,b,c,col)=>{part(null,false);tri(a,b,c,col)};   // 한 장짜리 꼬리날개: 양면 모두 그림
+  const box=(x,y,z,hx,hy,hz,col,k)=>{part([x,y,z]);const P=(a,b,c)=>[x+a*hx,y+b*hy,z+c*hz];
     quad(P(-1,1,-1),P(1,1,-1),P(1,1,1),P(-1,1,1),sh(col,1.1),k);quad(P(-1,-1,-1),P(-1,-1,1),P(1,-1,1),P(1,-1,-1),sh(col,.65),k);
     quad(P(1,-1,-1),P(1,-1,1),P(1,1,1),P(1,1,-1),sh(col,.9),k);quad(P(-1,-1,-1),P(-1,1,-1),P(-1,1,1),P(-1,-1,1),sh(col,.9),k);
     quad(P(-1,-1,1),P(-1,1,1),P(1,1,1),P(1,-1,1),sh(col,.8),k);quad(P(-1,-1,-1),P(1,-1,-1),P(1,1,-1),P(-1,1,-1),sh(col,.6),k)};
-  const loft=(S2,col)=>{const P=(s,sx,sy)=>[sx*s.w,(s.y||0)+sy*s.h,s.z];
+  const loft=(S2,col)=>{const P=(s,sx,sy)=>[sx*s.w,(s.y||0)+sy*s.h,s.z];part([0,S2.reduce((a,q)=>a+(q.y||0),0)/S2.length,S2.reduce((a,q)=>a+q.z,0)/S2.length]);
     for(let i=0;i<S2.length-1;i++){const A=S2[i],B=S2[i+1];
       quad(P(A,-1,1),P(A,1,1),P(B,1,1),P(B,-1,1),sh(col,1.1));quad(P(A,1,1),P(A,1,-1),P(B,1,-1),P(B,1,1),sh(col,.88));
       quad(P(A,1,-1),P(A,-1,-1),P(B,-1,-1),P(B,1,-1),sh(col,.62));quad(P(A,-1,-1),P(A,-1,1),P(B,-1,1),P(B,-1,-1),sh(col,.88))}
-    const t=S2[0];quad(P(t,-1,-1),P(t,1,-1),P(t,1,1),P(t,-1,1),sh(col,.55))};
+    const t=S2[0],e=S2[S2.length-1];quad(P(t,-1,-1),P(t,1,-1),P(t,1,1),P(t,-1,1),sh(col,.55));
+    quad(P(e,-1,1),P(e,1,1),P(e,1,-1),P(e,-1,-1),sh(col,.8))};   // 앞쪽 끝도 막는다(열려 있으면 안쪽 면이 비쳐 보임)
   const eng=(x,y,z,rad)=>{E.push({x,y,z,r:rad});box(x,y,z-.004,rad,rad,.014,[255,205,150],4)};
   const wing=(sx,z0,z1,span,sw,y,col)=>{const a=[sx*.1,y+.012,z0],b=[sx*.1,y+.012,z1],c=[sx*span,y+.012,z1-sw],d=[sx*.1,y-.012,z0],e=[sx*.1,y-.012,z1],f=[sx*span,y-.012,z1-sw];
-    tri(a,b,c,sh(col,1.05));tri(d,f,e,sh(col,.6));quad(b,e,f,c,sh(col,.8))};
-  const wins=(x,z0,n,dz,y)=>{for(let i=0;i<n;i++){const z=z0+i*dz;quad([x,y,z],[x,y+.022,z],[x,y+.022,z+dz*.55],[x,y,z+dz*.55],[255,214,140],3)}};
+    part([(a[0]+c[0])/2,y,(z0+z1+c[2])/3]);tri(a,b,c,sh(col,1.05));tri(d,f,e,sh(col,.6));quad(b,e,f,c,sh(col,.8));quad(a,c,f,d,sh(col,.7))};   // 앞전(바깥 모서리) 면도 추가
+  const wins=(x,z0,n,dz,y)=>{const X=typeof x==='function'?x:()=>x;for(let i=0;i<n;i++){const z=z0+i*dz,z2=z+dz*.55;quad([X(z),y,z],[X(z),y+.022,z],[X(z2),y+.022,z2],[X(z2),y,z2],[255,214,140],3)}};   // x 가 함수이면 선체 폭을 따라 붙인다
   const kind=ci===0?'dart':ci===1?(r()<.5?'dart':'wedge'):ci===2?(r()<.5?'wedge':'freighter'):(r()<.5?'freighter':'carrier');
   if(kind==='dart'){
     loft([{z:-.5,w:.1,h:.07},{z:-.25,w:.17,h:.1},{z:.15,w:.1,h:.07},{z:.5,w:.012,h:.012}],HUE);
     [-1,1].forEach(s=>{wing(s,-.45,-.05,.52,.14,0,sh(HUE,.9));eng(s*.07,0,-.5,.04)});
-    tri([0,.07,-.42],[0,.07,-.12],[0,.24,-.42],ACC);
+    fin([0,.07,-.42],[0,.07,-.12],[0,.24,-.42],ACC);
     box(0,.085,.0,.03,.02,.1,[40,60,90],0);
   }else if(kind==='wedge'){
     loft([{z:-.5,w:.3,h:.07},{z:-.1,w:.27,h:.085},{z:.5,w:.035,h:.03}],HUE);
     box(0,.15,-.22,.05,.07,.09,sh(HUE,1.05));wins(.052,-.28,3,.05,.12);wins(-.052,-.28,3,.05,.12);
-    [-1,1].forEach(s=>{box(s*.36,-.01,-.32,.06,.05,.18,sh(HUE,.85));eng(s*.36,-.01,-.5,.045);tri([s*.3,.0,-.15],[s*.3,.0,.2],[s*.42,.0,-.15],ACC)});
+    [-1,1].forEach(s=>{box(s*.36,-.01,-.32,.06,.05,.18,sh(HUE,.85));eng(s*.36,-.01,-.5,.045);fin([s*.3,.0,-.15],[s*.3,.0,.2],[s*.42,.0,-.15],ACC)});
     eng(0,0,-.5,.05);
   }else if(kind==='freighter'){
     loft([{z:-.42,w:.07,h:.07},{z:.34,w:.07,h:.07}],sh(HUE,.8));
@@ -1268,13 +1283,16 @@ function genShip(ci,seed){
     for(const [x,y] of [[-.06,.05],[.06,.05],[-.06,-.05],[.06,-.05]])eng(x,y,-.53,.03);
     loft([{z:.34,w:.07,h:.07},{z:.5,w:.035,h:.04}],sh(HUE,1.1));box(0,.1,.4,.05,.055,.06,sh(HUE,1.1));wins(.052,.36,3,.035,.1);wins(-.052,.36,3,.035,.1);
   }else{   // 항공모함형
+    const HW=[[-.5,.34,.06],[-.1,.4,.07],[.35,.26,.05],[.5,.03,.02]];   // [z, 반폭, 반높이]
+    const hv=(z,k)=>{for(let i=0;i<3;i++){const A=HW[i],B=HW[i+1];if(z<=B[0]||i===2)return A[k]+(B[k]-A[k])*clamp((z-A[0])/(B[0]-A[0]),0,1)}};
     loft([{z:-.5,w:.34,h:.06},{z:-.1,w:.4,h:.07},{z:.35,w:.26,h:.05},{z:.5,w:.03,h:.02}],HUE);
-    for(let i=0;i<5;i++)quad([-.18,.062,-.4+i*.15],[.18,.062,-.4+i*.15],[.18,.062,-.37+i*.15],[-.18,.062,-.37+i*.15],ACC);
+    for(let i=0;i<5;i++){const z0=-.4+i*.15,z1=z0+.03,y0=hv(z0,2)+.003,y1=hv(z1,2)+.003;quad([-.18,y0,z0],[.18,y0,z0],[.18,y1,z1],[-.18,y1,z1],ACC)}   // 갑판 줄무늬: 선체 윗면 높이에 얹는다
+    wins(z=>hv(z,1)+.004,-.4,10,.07,.0);wins(z=>-(hv(z,1)+.004),-.4,10,.07,.0);   // 현창: 선체 옆면(폭이 변함)에 얹는다
     box(.26,.13,-.06,.04,.1,.1,sh(HUE,1.1));wins(.3,-.14,5,.04,.12);
-    wins(.4,-.4,10,.07,.0);wins(-.4,-.4,10,.07,.0);
     for(const x of[-.27,-.09,.09,.27])eng(x,0,-.51,.045);
   }
-  return{F,E,L:SHIPCLS[ci].L,ci,kind,trail:SHTRAIL[Math.floor(r()*SHTRAIL.length)]};
+  PT.forEach((q,i)=>{if(!q.c){let x=0,y=0,z=0,n=0;for(const f of F)if(f.pt===i)for(const p of f.p){x+=p[0];y+=p[1];z+=p[2];n++}q.c=n?[x/n,y/n,z/n]:[0,0,0]}});
+  return{F,E,PT,L:SHIPCLS[ci].L,ci,kind,trail:SHTRAIL[Math.floor(r()*SHTRAIL.length)]};
 }
 const timeToTurn=dn=>dn*3600/(Math.max(S.v,15)*(S.mode==='sim'?S.ts:1));   // 다음 회전까지 남은 시간(초, 실제 시간 기준)
 const SHCAP=12;                   // 화면에 동시에 있을 수 있는 우주선 상한 (성능 보호)
@@ -1360,26 +1378,33 @@ function drawShip1(sh,cx0,cy0,F0){
   cx.globalCompositeOperation='source-over';
   };
   const drawHull=()=>{
-  const out=[];
+  const PT=m.PT,items=PT.map(q=>{const c=tf(q.c);return{c,d:Math.hypot(sh.X+c[0],sh.Y+c[1],sh.Z+c[2]),fs:[]}});
   for(const f of m.F){
-    const R=f.p.map(tf);let zz=0;for(const q of R)zz+=q[2];
-    out.push({f,R,z:zz/R.length});
+    const R=f.p.map(tf);let gx=0,gy=0,gz=0;for(const q of R){gx+=q[0];gy+=q[1];gz+=q[2]}gx/=R.length;gy/=R.length;gz/=R.length;
+    const ux=R[1][0]-R[0][0],uy=R[1][1]-R[0][1],uz=R[1][2]-R[0][2],vx=R[R.length-1][0]-R[0][0],vy=R[R.length-1][1]-R[0][1],vz=R[R.length-1][2]-R[0][2];
+    let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;const nl=Math.hypot(nx,ny,nz)||1;nx/=nl;ny/=nl;nz/=nl;
+    const it=items[f.pt];
+    if(PT[f.pt].cull&&nl>1e-9){   // 부품 중심에서 바깥을 향하게 법선을 맞추고, 카메라를 등진 면은 건너뛴다
+      const c=it.c;if(nx*(gx-c[0])+ny*(gy-c[1])+nz*(gz-c[2])<0){nx=-nx;ny=-ny;nz=-nz}
+      if((sh.X+gx)*nx+(sh.Y+gy)*ny+(sh.Z+gz)*nz>=0)continue;
+    }
+    it.fs.push({f,R,z:gz,n:[nx,ny,nz]});
   }
-  out.sort((p,q)=>q.z-p.z);
+  items.sort((p,q)=>q.d-p.d);
   const big=L/sh.Z*F0>50;
   cx.lineJoin='round';
-  for(const o of out){
-    const f=o.f,R=o.R;
-    let pts=R.map(q=>scr(sh.X+q[0],sh.Y+q[1],sh.Z+q[2]));
-    let I=1;
-    if(f.k<3){
-      const ux=R[1][0]-R[0][0],uy=R[1][1]-R[0][1],uz=R[1][2]-R[0][2],vx=R[R.length-1][0]-R[0][0],vy=R[R.length-1][1]-R[0][1],vz=R[R.length-1][2]-R[0][2];
-      const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,nl=Math.hypot(nx,ny,nz)||1;
-      I=.28+.72*Math.abs((nx*LDIR[0]+ny*LDIR[1]+nz*LDIR[2])/nl);
+  for(const it of items){
+    it.fs.sort((p,q)=>((p.f.k>=3)-(q.f.k>=3))||(q.z-p.z));   // 얹힌 장식(창·줄무늬)은 같은 부품의 본체 면 다음에
+    for(const o of it.fs){
+      const f=o.f,R=o.R;
+      const pts=R.map(q=>scr(sh.X+q[0],sh.Y+q[1],sh.Z+q[2]));
+      let I=1;
+      if(f.k<3)I=.28+.72*Math.abs(o.n[0]*LDIR[0]+o.n[1]*LDIR[1]+o.n[2]*LDIR[2]);
+      const r=f.c[0]*I|0,g=f.c[1]*I|0,b=f.c[2]*I|0;
+      cx.fillStyle=`rgb(${r},${g},${b})`;
+      cx.beginPath();pts.forEach((q,i)=>i?cx.lineTo(q[0],q[1]):cx.moveTo(q[0],q[1]));cx.closePath();cx.fill();
+      if(big&&f.k<3){cx.strokeStyle=`rgba(${r*.8|0},${g*.8|0},${b*.8|0},.55)`;cx.lineWidth=.6;cx.stroke()}   // 면 색을 조금 어둡게 한 선 (면 사이 이음매만 가린다)
     }
-    cx.fillStyle=`rgb(${f.c[0]*I|0},${f.c[1]*I|0},${f.c[2]*I|0})`;
-    cx.beginPath();pts.forEach((q,i)=>i?cx.lineTo(q[0],q[1]):cx.moveTo(q[0],q[1]));cx.closePath();cx.fill();
-    if(big&&f.k<3){cx.strokeStyle='rgba(6,10,16,.4)';cx.lineWidth=.6;cx.stroke()}
   }
   };
   // 엔진 불빛
@@ -1945,13 +1970,14 @@ function mqFit(e){
   if(d>1){e.style.setProperty('--mqd',-(d+3)+'px');e.style.setProperty('--mqt',(3.5+d/16).toFixed(1)+'s');e.classList.add('mv')}
 }
 function setMq(id,v){if(cache[id]!==v){cache[id]=v;const e=$(id);e.firstChild.textContent=v;mqFit(e)}}
+const setUnit=(id,au)=>{if(cache[id]!==au){cache[id]=au;const e=$(id);e.children[0].classList.toggle('on',!au);e.children[1].classList.toggle('on',au)}};
 const mqAll=()=>document.querySelectorAll('.mqc').forEach(mqFit);
 /* 잔여 거리 블록이 상단 우측으로 올라갔으므로, 다음 기동 글이 그 폭을 넘지 않게 오른쪽 여백을 맞추고 항로 막대 시작 위치도 조정한다 */
 function fitTop(){
   const rd=$('rdist'),mn=$('mn'),th=$('then'),nv=$('nav');if(!rd.offsetWidth)return;
   const w=rd.offsetWidth+8+8,db=rd.offsetTop+rd.offsetHeight,H=document.documentElement.style;
   H.setProperty('--rdw',w+'px');
-  H.setProperty('--rdw2',(th.offsetTop>=db-2?10:w)+'px');
+  H.setProperty('--rdw2',(th.offsetTop>=db-2?10:w)+'px');H.setProperty('--rdw3',($('thenNm').offsetTop>=db-2?10:w)+'px');
   const mb=mn.getBoundingClientRect().bottom-$('hud').getBoundingClientRect().top;
   H.setProperty('--rt',Math.max(db+mn.offsetTop+$('top').offsetTop+4,mb+4)+'px');
   mqAll();
@@ -2006,6 +2032,7 @@ function hud(){
   const pt=bigN?'888,888':'88,888',pn=bigN?7:6;
   if(cache.bigN!==bigN){cache.bigN=bigN;sdInit('navD',pt);sdInit('thenD',pt);requestAnimationFrame(fitTop)}
   const showD=(on)=>{if(cache.showD!==on){cache.showD=on;$('navR').hidden=!on;$('navL3').style.display=on?'none':''}};
+  let auOn=cache.auOn||false;   // 도착한 뒤에는 마지막 상태를 유지 (바로 LY로 되돌아가지 않게)
   if(S.waiting&&S.mode==='gps'){
     setMq('navL1',L('GPS 대기','AWAIT GPS'));
     setMq('navL2',L('수신되면 항로를 자동 계산합니다','Route is calculated once a fix is received'));
@@ -2018,13 +2045,16 @@ function hud(){
     setMq('navL1',manText(nm));
     setMq('navL2',`${bname(nm.body.name)}${nm.label?' · '+nm.label:''}`);
     showD(true);sdSet('navD',pad(fmt(Math.max(0,nm.at-S.s)*LY_PER_KM),pn));
+    auOn=S.arrived||nm.at-S.s<=DROP_D;   // 천체가 화면에 나타난 뒤(도착 후 포함)에는 같은 숫자를 AU로 읽는다
     setHTML('navSvg',arrowSVG(nm.type,nm.ang));
   }
+  if(!active||(!S.arrived&&!nm))auOn=false;
+  cache.auOn=auOn;setUnit('navU',auOn);setUnit('rdU',auOn&&!!nm&&nm.type==='ARR');   // 잔여 거리는 목적지가 화면에 나타난 뒤에만 AU
   if(active&&nn){
     setHTML('thenSvg',arrowSVG(nn.type,nn.ang));
-    setMq('thenTx',manText(nn)+' ·');sdSet('thenD',pad(fmt(Math.max(0,nn.at-S.s)*LY_PER_KM),pn));
-    $('then').style.visibility='visible';
-  }else $('then').style.visibility='hidden';
+    setMq('thenTx',manText(nn)+' ·');setMq('thenNm',bname(nn.body.name)+(nn.label?' · '+nn.label:''));sdSet('thenD',pad(fmt(Math.max(0,nn.at-S.s)*LY_PER_KM),pn));
+    $('then').style.visibility='visible';$('thenNm').style.visibility='visible';
+  }else{$('then').style.visibility='hidden';$('thenNm').style.visibility='hidden'}
 
   const stopOn=S.mode!=='idle';
   if(cache.stopOn!==stopOn){cache.stopOn=stopOn;$('bStop').classList.toggle('on',stopOn);resizeHud()}
