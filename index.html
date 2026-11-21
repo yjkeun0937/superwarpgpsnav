@@ -1329,7 +1329,9 @@ function drawRing(b,x,y,r,front){
 const PERF={bodyNow:false,bodyMs:0};
 function drawPlanet(b,x,y,r,t){
   PERF.bodyNow=true;const t0=performance.now();
-  if(!(CFG.gl&&b.kind==='earth'&&b.ready&&glPlanet(b,x,y,r,t)))drawPlanet2D(b,x,y,r,t);
+  let ok=false;
+  if(CFG.gl&&b.kind==='earth'&&b.ready&&!GLX.bad){try{ok=glPlanet(b,x,y,r,t)}catch(e){GLX.bad=1;GLX.info=L('WebGL 오류로 2D로 전환: ','WebGL error, using 2D: ')+(e&&e.message||e)}}
+  if(!ok)drawPlanet2D(b,x,y,r,t);
   PERF.bodyMs=performance.now()-t0;
 }
 function drawPlanet2D(b,x,y,r,t){
@@ -2352,7 +2354,7 @@ function applyLang(){
   setPause(pauseOn);sndSync();wpHint();
   cfgSync();msgBuild();bdBuild();renderHist();[PG,PSD,PSO].forEach(P=>P.lbSync());
   setStatus('',0,'gpsStatus');setStatus('',0,'simStatus');
-  if(typeof labSync==='function')labSync();
+  if(window.__labReady)labSync();   /* LAB 코드(const)가 정의되기 전에는 부르지 않는다 */
 }
 function setLang(l){CFG.lang=l;cfgSave();applyLang()}
 $('lKo').onclick=()=>setLang('ko');$('lEn').onclick=()=>setLang('en');
@@ -2482,13 +2484,14 @@ function labSync(){
 $('labGl').onchange=e=>{CFG.gl=e.target.checked?1:0;cfgSave();for(const k in PF)PF[k].length=0;labSync()};
 $('labOnly').onchange=e=>{CFG.glOnly=e.target.checked?1:0;cfgSave()};
 $('labPerf').onchange=e=>{CFG.perf=e.target.checked?1:0;cfgSave();for(const k in PF)PF[k].length=0;labSync()};
+window.__labReady=true;labSync();
 
 /* ---------------- 루프 ---------------- */
 let last=performance.now();
 function frame(now){
   const fdt=now-last,dt=Math.min(.05,fdt/1000);last=now;const j0=performance.now();
-  update(dt);stopMsgStep(dt);prepBodies();runJobs(5);render(dt);hud();audioUpdate();perfRec(fdt,performance.now()-j0);
-  requestAnimationFrame(frame);
+  requestAnimationFrame(frame);   /* 한 프레임에서 오류가 나도 루프가 멈추지 않게 먼저 예약한다 */
+  try{update(dt);stopMsgStep(dt);prepBodies();runJobs(5);render(dt);hud();audioUpdate();perfRec(fdt,performance.now()-j0)}catch(e){if(!frame.er){frame.er=1;console.error(e)}}
 }
 requestAnimationFrame(frame);
 </script>
