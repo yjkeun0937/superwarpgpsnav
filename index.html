@@ -33,22 +33,39 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 #perf{position:fixed;z-index:25;left:62px;right:62px;top:300px;padding:3px 5px;background:rgba(0,0,0,.55);border:1px solid var(--line);color:#9fffe6;font:10px/1.35 monospace;pointer-events:auto;white-space:pre;-webkit-user-select:none;user-select:none}
 #perf[hidden]{display:none}
 #stardate{margin-right:34px;font:14px 'VT323','Nanum Gothic Coding',monospace;color:var(--lab);text-shadow:0 1px 3px #000;white-space:nowrap}
-#nav{display:flex;gap:10px;align-items:center;margin:10px 84px 0 10px;color:var(--amb)}
-#nav svg{width:58px;height:58px;flex:none;color:var(--amb);filter:drop-shadow(0 0 5px #ffb21caa)}
+#mn{position:relative}
+#nav{display:flex;gap:10px;align-items:center;margin:10px var(--rdw,84px) 0 10px;color:var(--amb)}
+#nav>svg{width:58px;height:58px;flex:none;color:var(--amb);filter:drop-shadow(0 0 5px #ffb21caa)}
 #nav .tx{min-width:0}
-#nav .l1{font:29px 'VT323','Nanum Gothic Coding',monospace;line-height:.95;text-shadow:0 0 8px #ffb21c99,0 1px 3px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#nav .l2{font-size:13px;color:#e0a22a;margin:2px 0;text-shadow:0 1px 3px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#nav .l3{font:24px 'VT323','Nanum Gothic Coding',monospace;color:var(--fg);text-shadow:var(--tsh)}
-#then{margin:5px 84px 0 10px;display:flex;align-items:center;gap:6px;font-size:12px;color:#c99a32;text-shadow:0 1px 3px #000;white-space:nowrap;overflow:hidden}
-#then svg{width:15px;height:15px;flex:none;color:#d9a02a}
-#then .tg{font:15px 'VT323','Nanum Gothic Coding',monospace;color:var(--lab)}
+#nav .l1{font:29px 'VT323','Nanum Gothic Coding',monospace;line-height:.95;text-shadow:0 0 8px #ffb21c99,0 1px 3px #000;}
+#nav .l2{font-size:13px;color:#e0a22a;margin:2px 0;text-shadow:0 1px 3px #000}
+#nav .l3{font:24px 'VT323','Nanum Gothic Coding',monospace;color:var(--fg);text-shadow:var(--tsh);min-height:24px}
+#navR{display:flex;align-items:flex-end;gap:5px;height:24px;line-height:1;overflow:hidden;min-width:0}
+#dst{--sh:33px}#eta{--sh:19px}#navD{--sh:19px}#thenD{--sh:12px}
+/* 폭이 좁은 화면: 잔여 거리 블록과 다음 기동 숫자를 함께 줄여 글이 들어갈 자리를 남긴다 */
+@media (max-width:400px){#dst{--sh:27px}#eta{--sh:16px}#rdist .eta .lb{font-size:10px}#navD{--sh:16px}#thenD{--sh:11px}#navR .unit{font-size:15px}}
+@media (max-width:340px){#dst{--sh:22px}#eta{--sh:13px}#navD{--sh:14px}#thenD{--sh:10px}#rdist .unit{font-size:16px}}
+#navR .unit{font-size:17px;padding-bottom:0}
+#navR .tm{padding-bottom:0}
+#navR[hidden]{display:none}
+/* 길어서 영역을 넘는 글은 고정 폭 안에서 좌우로 천천히 오간다 */
+.mqc{display:block;overflow:hidden;white-space:nowrap;min-width:0}
+.mqc>span{display:inline-block;will-change:transform}
+.mqc.mv>span{animation:mq var(--mqt,8s) ease-in-out infinite}
+@keyframes mq{0%,16%{transform:translateX(0)}50%,66%{transform:translateX(var(--mqd))}100%{transform:translateX(0)}}
+#then{margin:5px var(--rdw2,84px) 0 10px;display:flex;align-items:center;gap:6px;font-size:12px;color:#c99a32;text-shadow:0 1px 3px #000;white-space:nowrap;overflow:hidden}
+#then>svg{width:15px;height:15px;flex:none;color:#d9a02a}
+#then .mqc{flex:0 1 auto}
+#then .thd{display:flex;align-items:flex-end;gap:3px;flex:none;line-height:1}
+#then .sd{--zc:#d9a02a}
+#then .unit{font-size:14px;padding-bottom:0;color:#c99a32}
 /* 우측 세로 항로 게이지 */
-#route{position:absolute;right:8px;top:158px;bottom:calc(var(--bh,209px) + 8px);width:64px}
+#route{position:absolute;right:8px;top:var(--rt,158px);bottom:calc(var(--bh,209px) + 8px);width:64px}
 #rg{position:absolute;inset:0;width:100%;height:100%}
 #ship{position:absolute;left:0;top:0;width:30px;height:44px;overflow:visible;filter:drop-shadow(0 0 6px rgba(125,255,216,.55));will-change:transform}
 #flame{transform-box:fill-box;transform-origin:50% 0;animation:fl .13s steps(2) infinite}
 @keyframes fl{0%{transform:scaleY(.75)}100%{transform:scaleY(1.25)}}
-#rdist{position:absolute;right:68px;top:0;text-align:right;white-space:nowrap;padding:0 8px 8px 24px;background:radial-gradient(ellipse at 65% 50%,rgba(0,0,0,.62),rgba(0,0,0,0) 72%)}
+#rdist{position:absolute;right:8px;top:10px;text-align:right;white-space:nowrap;padding:0 0 4px 14px;background:radial-gradient(ellipse at 70% 50%,rgba(0,0,0,.6),rgba(0,0,0,0) 78%)}
 #rdist .row{display:flex;align-items:flex-end;justify-content:flex-end;gap:5px}
 #rdist .eta{display:flex;justify-content:flex-end;align-items:flex-end;gap:6px;margin-top:4px}
 /* 7세그 */
@@ -220,7 +237,6 @@ html[lang=ko] .bgrp .bt{font-size:11px}
 html[lang=ko] .cfgsec{font-size:14px}
 html[lang=ko] .cfgfold span{font-size:14px}
 html[lang=ko] .card h1.k{font-size:23px}
-html[lang=ko] #then .tg{font-size:12px}
 .cfgh b .u{font:400 15px 'Nanum Gothic Coding',monospace;text-shadow:none}
 html[lang=en] .cfgh b .u{font:400 20px 'VT323','Nanum Gothic Coding',monospace}
 #lKo{font-size:15px}#lEn{font-size:19px}
@@ -256,16 +272,24 @@ html[lang=en] #toast b{font-size:30px}
         </div>
         <span id="stardate">----.---.----</span>
       </div>
+      <div id="mn">
       <div id="nav">
         <svg id="navSvg" viewBox="0 0 100 100" shape-rendering="crispEdges"></svg>
         <div class="tx">
           <div class="lb" data-en="NEXT MANEUVER">다음 기동</div>
-          <div class="l1" id="navL1">STANDBY</div>
-          <div class="l2" id="navL2">대기 중 — SETUP에서 항로를 설정하세요</div>
-          <div class="l3" id="navL3">&nbsp;</div>
+          <div class="l1 mqc" id="navL1"><span>STANDBY</span></div>
+          <div class="l2 mqc" id="navL2"><span>대기 중 — SETUP에서 항로를 설정하세요</span></div>
+          <div class="l3 mqc" id="navL3"><span>&nbsp;</span></div>
+          <div class="l3" id="navR" hidden><span class="tm">T-</span><span class="sd" id="navD"></span><span class="unit">LY</span></div>
         </div>
       </div>
-      <div id="then"><span class="tg" data-en="THEN">이어서</span><svg id="thenSvg" viewBox="0 0 100 100" shape-rendering="crispEdges"></svg><span id="thenTx"></span></div>
+      <div id="then"><svg id="thenSvg" viewBox="0 0 100 100" shape-rendering="crispEdges"></svg><span class="mqc" id="thenTx"><span></span></span><span class="thd"><span class="sd" id="thenD"></span><span class="unit">LY</span></span></div>
+      <div id="rdist">
+        <div class="lb" data-en="DISTANCE">잔여 거리</div>
+        <div class="row"><span class="sd" id="dst"></span><span class="unit">LY</span></div>
+        <div class="eta"><span class="lb" data-en="ETA T-">도착까지 T-</span><span class="sd" id="eta"></span></div>
+      </div>
+      </div>
     </div>
 
     <div id="thr">
@@ -286,11 +310,6 @@ html[lang=en] #toast b{font-size:30px}
         <circle cx="15" cy="17" r="3.2" fill="#0b3a44" stroke="#7dffd8" stroke-width="1"/>
         <polygon points="15,30 13,38 17,38" fill="#c9302b"/>
       </svg>
-      <div id="rdist">
-        <div class="lb" data-en="DISTANCE">잔여 거리</div>
-        <div class="row"><span class="sd" id="dst" style="--sh:33px"></span><span class="unit">LY</span></div>
-        <div class="eta"><span class="lb" data-en="ETA T-">도착까지 T-</span><span class="sd" id="eta" style="--sh:19px"></span></div>
-      </div>
     </div>
 
     <div id="bottom">
@@ -517,7 +536,7 @@ function* genEarth(b){
     :[[0,215,200,140],[.04,60,118,56],[.3,46,96,46],[.5,112,116,68],[.72,120,102,86],[.88,150,150,152],[1,245,248,250]]);
   const sand=pal===0?[205,172,104]:pal===1?[190,150,120]:[200,150,90];
   const lc=document.createElement('canvas');lc.width=512;lc.height=256;const lg=lc.getContext('2d'),lid=lg.createImageData(512,256),ld=lid.data,lr=mulberry32(b.seed+91),
-    LG={cw:.3+.7*lr(),tint:lr()<.3?[190,225,255]:[255,214,150]};   // cw: 해안선형(1)↔도시 밀집형(0) 비율, tint: 불빛 색
+    LG={cw:.3+.7*lr(),tint:lr()<.35?[255,190,105]:[255,150,60]};   // cw: 해안선형(1)↔도시 밀집형(0) 비율, tint: 불빛 색
   const c=yield* pix(512,256,(u,v,d,o)=>{
     const lat=Math.abs(v-.5)*2,uw=u+(vn(u*4,v*2,4,sd+101)-.5)*.14,vw=v+(vn(u*4+1,v*2+2,4,sd+131)-.5)*.12,   // 격자 무늬(사각형)가 눈에 띄지 않게 좌표를 살짝 비튼다 (가로는 그대로 이어짐)
       h=fbm(uw*6,vw*3.4,6,6,sd),m=fbm(uw*5+3,vw*3+1,5,4,sd+50);
@@ -533,9 +552,11 @@ function* genEarth(b){
     /* 야간 조명: 육지에서만, 해안선을 따라 또는 특정 지역에 몰려서 (낮 영역에서는 셰이더가 숨긴다) */
     let I=0;const tt=(h-sea)/(1-sea);
     if(tt>=0&&lat<.84){
-      const coast=1-sstep(0,.07,tt),D=fbm(uw*5+9,vw*2.5+4,5,4,sd+77),hot=sstep(.52,.64,D);
-      I=clamp((LG.cw*coast*(.15+.85*sstep(.36,.56,D))+(1-LG.cw*.5)*hot*(1-.4*coast))*(1-sstep(.74,.84,lat)),0,1);
-      I=hash(o+sd*13+7)<I*1.25?I:I*.15;
+      const coast=1-sstep(0,.07,tt),D=fbm(uw*5+9,vw*2.5+4,5,4,sd+77),F=fbm(uw*18+5,vw*9,18,4,sd+120),
+        rg=1-Math.abs(2*fbm(uw*10+2,vw*5,10,4,sd+150)-1),vein=sstep(.8,.93,rg),             // 가지처럼 뻗는 도시 연결선(프랙탈)
+        zone=sstep(.42,.58,D);
+      I=clamp(LG.cw*coast*(.2+.8*sstep(.3,.55,D))*(.35+.95*F)+(1-LG.cw*.4)*zone*(.18+.5*F+.9*vein*(.4+.6*zone)),0,1)*(1-sstep(.74,.84,lat));
+      I=hash(o+sd*13+7)<I*1.5?I:I*.08;
     }
     ld[o]=LG.tint[0]*I;ld[o+1]=LG.tint[1]*I;ld[o+2]=LG.tint[2]*I;ld[o+3]=255;
   });
@@ -552,14 +573,14 @@ function* genBarren(b){
   const r=mulberry32(b.seed+6),sd=Math.floor(r()*200),hue=14+Math.floor(r()*40),lava=!!b.o.lava;
   const lut=mkLut(lava?[[0,24,18,16],[.5,70,52,44],[1,120,96,82]]:[[0,52,44,40],[.5,128,110,96],[1,190,172,150]]);
   const tint=lava?[1,.9,.85]:[1+(hue-30)/220,1,1-(hue-30)/260];
-  const lc=document.createElement('canvas');lc.width=512;lc.height=256;const lg=lc.getContext('2d'),lid=lg.createImageData(512,256),ld=lid.data,lt=r()<.35?[190,225,255]:[255,214,150];
+  const lc=document.createElement('canvas');lc.width=512;lc.height=256;const lg=lc.getContext('2d'),lid=lg.createImageData(512,256),ld=lid.data,lt=r()<.35?[255,190,105]:[255,150,60];
   const c=yield* pix(512,256,(u,v,d,o)=>{
     const uw=u+(vn(u*4,v*2,4,sd+101)-.5)*.14,vw=v+(vn(u*4+1,v*2+2,4,sd+131)-.5)*.12,h=fbm(uw*6,vw*3,6,6,sd),mare=sstep(.42,.55,fbm(uw*3+5,vw*1.5,3,3,sd+4)),i=(clamp(h*(1-.3*mare)+.05,0,1)*255|0)*3;
     let R=lut[i]*tint[0],G=lut[i+1]*tint[1],B=lut[i+2]*tint[2];
     if(lava){const rd=Math.abs(fbm(u*9+2,v*4.5,9,4,sd+9)-.5),k=clamp(1-rd/.028,0,1);R+=k*255;G+=k*120;B+=k*20}
     put(d,o,R,G,B);
     let I=0;   /* 야간 조명: 거주 돔이 모인 몇몇 지역 (용암 행성 제외) */
-    if(!lava&&Math.abs(v-.5)*2<.8){const D=fbm(uw*6+13,vw*3+2,6,4,sd+88);I=sstep(.62,.72,D)*.9;I=hash(o+sd*5+3)<I*1.1?I:I*.12}
+    if(!lava&&Math.abs(v-.5)*2<.8){const D=fbm(uw*6+13,vw*3+2,6,4,sd+88),F=fbm(uw*20+7,vw*10,20,4,sd+160),rg=1-Math.abs(2*fbm(uw*12+4,vw*6,12,4,sd+170)-1);I=clamp(sstep(.56,.7,D)*(.3+.9*F)+sstep(.5,.62,D)*.8*sstep(.82,.94,rg),0,1);I=hash(o+sd*5+3)<I*1.4?I:I*.08}
     ld[o]=lt[0]*I;ld[o+1]=lt[1]*I;ld[o+2]=lt[2]*I;ld[o+3]=255;
   },(g)=>{
     for(let i=0;i<110;i++){
@@ -1407,19 +1428,17 @@ function drawPlanet(b,x,y,r,t){
 /* 위성 궤도의 빛 알갱이 (지구형·기계 행성). 디테일 없이 점으로만 */
 function drawSats(b,x,y,r,t,front){
   if(!b.sat){const q=mulberry32(b.seed+211);b.sat=Array.from({length:30+Math.floor(q()*14)},()=>({R:1.12+.55*q(),inc:(q()-.5)*2.2,nd:q()*6.2832,th:q()*6.2832,w:(.1+.08*q())*(q()<.5?-1:1),ph:q()*6.2832}))}
-  const s=Math.max(1,r*.011);
-  cx.save();cx.globalCompositeOperation='lighter';
-  for(let pass=0;pass<2;pass++){
-    cx.fillStyle=pass?'rgba(255,244,214,.95)':'rgba(255,238,200,.5)';cx.beginPath();let n=0;
-    for(const q of b.sat){
-      const th=q.th+q.w*t/Math.pow(q.R,1.5),a=q.R*Math.cos(th),c=q.R*Math.sin(th),y3=c*Math.cos(q.inc),z=c*Math.sin(q.inc),cn=Math.cos(q.nd),sn=Math.sin(q.nd),X=a*cn-y3*sn,Y=a*sn+y3*cn;
-      if((z>=0)!==front)continue;
-      if(z<0&&X*X+Y*Y<1)continue;   // 행성 뒤로 숨는다
-      const tw=.65+.35*Math.sin(t*2.3+q.ph);if((tw>.8)!==!!pass)continue;
-      cx.rect(x+X*r-s/2,y-Y*r-s/2,s,s);n++;
-    }
-    if(n)cx.fill();
+  const s=Math.max(1.8,r*.018),hs=s*3.2,H=new Path2D(),D=new Path2D(),B=new Path2D();let n=0;
+  for(const q of b.sat){
+    const th=q.th+q.w*t/Math.pow(q.R,1.5),a=q.R*Math.cos(th),c=q.R*Math.sin(th),y3=c*Math.cos(q.inc),z=c*Math.sin(q.inc),cn=Math.cos(q.nd),sn=Math.sin(q.nd),X=a*cn-y3*sn,Y=a*sn+y3*cn;
+    if((z>=0)!==front)continue;
+    if(z<0&&X*X+Y*Y<1)continue;   // 행성 뒤로 숨는다
+    const px=x+X*r,py=y-Y*r;H.rect(px-hs/2,py-hs/2,hs,hs);
+    (.65+.35*Math.sin(t*2.3+q.ph)>.8?B:D).rect(px-s/2,py-s/2,s,s);n++;
   }
+  if(!n)return;
+  cx.save();cx.globalCompositeOperation='lighter';
+  cx.fillStyle='rgba(255,190,110,.14)';cx.fill(H);cx.fillStyle='rgba(255,226,170,.7)';cx.fill(D);cx.fillStyle='rgba(255,250,225,1)';cx.fill(B);
   cx.restore();
 }
 
@@ -1698,7 +1717,7 @@ function fitSpd(){
   $('spd').style.setProperty('--sh',dh+'px');$('spd').parentNode.parentNode.style.marginBottom=(-(dh-64))+'px';
 }
 new ResizeObserver(()=>document.documentElement.style.setProperty('--bh',$('bottom').offsetHeight+'px')).observe($('bottom'));
-new ResizeObserver(resizeHud).observe($('hud'));new ResizeObserver(resizeHud).observe($('sg'));resizeHud();
+new ResizeObserver(()=>{resizeHud();fitTop()}).observe($('hud'));new ResizeObserver(resizeHud).observe($('sg'));new ResizeObserver(resizeHud).observe($('route'));resizeHud();
 
 const mkBar=(id,n)=>{const e=$(id);for(let i=0;i<n;i++)e.appendChild(document.createElement('i'))};
 mkBar('enBar',16);const enSeg=[...$('enBar').children];
@@ -1729,7 +1748,7 @@ function sdSet(id,text){
     if(lt[0].tagName==='circle'){const on=c===','||c===':';lt.forEach(e=>e.classList.toggle('on',on))}
     else{const m=SD_MAP[c]||'';lt.forEach(e=>e.classList.toggle('on',m.indexOf(e.dataset.k)>=0))}});
 }
-sdInit('spd','888');sdInit('dst','88,888');sdInit('eta','88:88');
+sdInit('spd','888');sdInit('dst','88,888');sdInit('eta','88:88');sdInit('navD','88,888');sdInit('thenD','88,888');
 
 const VMAX=140,NB=46;
 const ZC=v=>v<30?'#4de8ff':v<60?'#6dff9c':v<100?'#ffb21c':'#ff4136';   // 30 / 60 / 100 km 기준 색
@@ -1791,9 +1810,30 @@ function arrowSVG(type,ang){
   const st='fill="none" stroke="currentColor" stroke-width="12"';
   if(type==='ARR')return `<circle cx="50" cy="50" r="38" ${st} stroke-width="10"/><circle cx="50" cy="50" r="13" fill="currentColor"/>`;
   if(type==='U')return `<path d="M28 96V40Q28 12 50 12Q72 12 72 40V68" ${st}/><polygon points="54,66 90,66 72,94" fill="currentColor"/>`;
-  return `<line x1="50" y1="98" x2="50" y2="52" ${st}/><g transform="rotate(${ang} 50 52)"><line x1="50" y1="52" x2="50" y2="24" ${st}/><polygon points="50,2 76,32 24,32" fill="currentColor"/></g>`;
+  /* 직진·선회·미세 선회: 줄기가 꺾이는 곳을 곡선(2차 베지어)으로 이어 U턴과 같은 결로 만든다 */
+  const a=(ang||0)*Math.PI/180,sn=Math.sin(a),cs=Math.cos(a),cX=50,sh=Math.abs(ang||0)>100,cY=sh?38:54,r=14,Lr=sh?32:22,ex=cX+Lr*sn,ey=cY-Lr*cs;
+  const d=ang?`M50 98V${cY+r}Q${cX} ${cY} ${(cX+r*sn).toFixed(1)} ${(cY-r*cs).toFixed(1)}L${ex.toFixed(1)} ${ey.toFixed(1)}`:`M50 98V${ey}`;
+  return `<path d="${d}" ${st}/><g transform="translate(${ex.toFixed(1)} ${ey.toFixed(1)}) rotate(${ang||0})"><polygon points="0,-24 26,6 -26,6" fill="currentColor"/></g>`;
 }
 const cache={};
+function mqFit(e){
+  const sp=e.firstChild;if(!sp)return;e.classList.remove('mv');
+  const d=sp.offsetWidth-e.clientWidth;
+  if(d>1){e.style.setProperty('--mqd',-(d+3)+'px');e.style.setProperty('--mqt',(3.5+d/16).toFixed(1)+'s');e.classList.add('mv')}
+}
+function setMq(id,v){if(cache[id]!==v){cache[id]=v;const e=$(id);e.firstChild.textContent=v;mqFit(e)}}
+const mqAll=()=>document.querySelectorAll('.mqc').forEach(mqFit);
+/* 잔여 거리 블록이 상단 우측으로 올라갔으므로, 다음 기동 글이 그 폭을 넘지 않게 오른쪽 여백을 맞추고 항로 막대 시작 위치도 조정한다 */
+function fitTop(){
+  const rd=$('rdist'),mn=$('mn'),th=$('then'),nv=$('nav');if(!rd.offsetWidth)return;
+  const w=rd.offsetWidth+8+8,db=rd.offsetTop+rd.offsetHeight,H=document.documentElement.style;
+  H.setProperty('--rdw',w+'px');
+  H.setProperty('--rdw2',(th.offsetTop>=db-2?10:w)+'px');
+  const mb=mn.getBoundingClientRect().bottom-$('hud').getBoundingClientRect().top;
+  H.setProperty('--rt',Math.max(db+mn.offsetTop+$('top').offsetTop+4,mb+4)+'px');
+  mqAll();
+}
+new ResizeObserver(fitTop).observe($('rdist'));new ResizeObserver(fitTop).observe($('nav'));if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitTop);
 function setTxt(id,v){if(cache[id]!==v){cache[id]=v;$(id).textContent=v}}
 function setHTML(id,v){if(cache[id]!==v){cache[id]=v;$(id).innerHTML=v}}
 function setCls(id,c,on){$(id).classList.toggle(c,!!on)}
@@ -1807,7 +1847,7 @@ function hud(){
     $('uC').style.opacity=(.2+.8*w).toFixed(2);$('uC').style.textShadow=w>.5?`0 0 ${Math.round(4+10*w)}px currentColor`:'none';
     $('uM').style.opacity=(1-.78*w).toFixed(2)}
   const zc=ZC(S.v);if(cache.zc!==zc){cache.zc=zc;$('spd').style.setProperty('--zc',zc)}
-  const rem=Math.max(0,S.total-S.s),big=Math.round(S.total*LY_PER_KM)>=100000;
+  const rem=Math.max(0,S.total-S.s),bigN=Math.round(S.total*LY_PER_KM)>=100000,big=bigN;
   if(cache.big!==big){cache.big=big;sdInit('dst',big?'888,888':'88,888')}
   sdSet('dst',pad(active?fmt(rem*LY_PER_KM):'0',big?7:6));
   if(active){
@@ -1840,23 +1880,26 @@ function hud(){
   setCls('lpRe','on',S.rerouting);
 
   const base=S.idx+(S.turn?1:0),nm=S.arrived?S.arrM:S.maneuvers[base],nn=S.arrived?null:S.maneuvers[base+1];
+  const pt=bigN?'888,888':'88,888',pn=bigN?7:6;
+  if(cache.bigN!==bigN){cache.bigN=bigN;sdInit('navD',pt);sdInit('thenD',pt);requestAnimationFrame(fitTop)}
+  const showD=(on)=>{if(cache.showD!==on){cache.showD=on;$('navR').hidden=!on;$('navL3').style.display=on?'none':''}};
   if(S.waiting&&S.mode==='gps'){
-    setTxt('navL1',L('GPS 대기','AWAIT GPS'));
-    setTxt('navL2',L('수신되면 항로를 자동 계산합니다','Route is calculated once a fix is received'));
-    setTxt('navL3',S.dest?L('목적지 · ','Destination · ')+S.dest.name:' ');setHTML('navSvg',arrowSVG('S',0));
+    setMq('navL1',L('GPS 대기','AWAIT GPS'));
+    setMq('navL2',L('수신되면 항로를 자동 계산합니다','Route is calculated once a fix is received'));
+    setMq('navL3',S.dest?L('목적지 · ','Destination · ')+S.dest.name:'\u00a0');setHTML('navSvg',arrowSVG('S',0));showD(false);
   }else if(!active||!nm){
-    setTxt('navL1',S.arrived?L('도착','ARRIVED'):L('대기','STANDBY'));
-    setTxt('navL2',S.arrived?L('워프 항법 종료 — 목적지에 도착했습니다','Warp navigation complete — you have arrived'):L('대기 중 — [항로 설정]에서 항로를 정하세요','Standing by — set a route in SETUP'));
-    setTxt('navL3',' ');setHTML('navSvg',arrowSVG(S.arrived?'ARR':'S',0));
+    setMq('navL1',S.arrived?L('도착','ARRIVED'):L('대기','STANDBY'));
+    setMq('navL2',S.arrived?L('워프 항법 종료 — 목적지에 도착했습니다','Warp navigation complete — you have arrived'):L('대기 중 — [항로 설정]에서 항로를 정하세요','Standing by — set a route in SETUP'));
+    setMq('navL3','\u00a0');setHTML('navSvg',arrowSVG(S.arrived?'ARR':'S',0));showD(false);
   }else{
-    setTxt('navL1',manText(nm));
-    setTxt('navL2',`${bname(nm.body.name)}${nm.label?' · '+nm.label:''}`);
-    setTxt('navL3',`T- ${fmt(Math.max(0,nm.at-S.s)*LY_PER_KM)} LY`);
+    setMq('navL1',manText(nm));
+    setMq('navL2',`${bname(nm.body.name)}${nm.label?' · '+nm.label:''}`);
+    showD(true);sdSet('navD',pad(fmt(Math.max(0,nm.at-S.s)*LY_PER_KM),pn));
     setHTML('navSvg',arrowSVG(nm.type,nm.ang));
   }
   if(active&&nn){
     setHTML('thenSvg',arrowSVG(nn.type,nn.ang));
-    setTxt('thenTx',`${manText(nn)} · ${fmt(Math.max(0,nn.at-S.s)*LY_PER_KM)} LY`);
+    setMq('thenTx',manText(nn)+' ·');sdSet('thenD',pad(fmt(Math.max(0,nn.at-S.s)*LY_PER_KM),pn));
     $('then').style.visibility='visible';
   }else $('then').style.visibility='hidden';
 
@@ -2412,7 +2455,7 @@ function applyLang(){
   D.querySelectorAll('[data-en-aria]').forEach(el=>{if(el.dataset.koAria==null)el.dataset.koAria=el.getAttribute('aria-label');el.setAttribute('aria-label',en?el.dataset.enAria:el.dataset.koAria)});
   $('lKo').classList.toggle('act',!en);$('lEn').classList.toggle('act',en);
   for(const k in cache)delete cache[k];
-  setPause(pauseOn);sndSync();wpHint();
+  setPause(pauseOn);requestAnimationFrame(fitTop);sndSync();wpHint();
   cfgSync();msgBuild();bdBuild();renderHist();[PG,PSD,PSO].forEach(P=>P.lbSync());
   setStatus('',0,'gpsStatus');setStatus('',0,'simStatus');
   if(window.__labReady)labSync();   /* LAB 코드(const)가 정의되기 전에는 부르지 않는다 */
@@ -2450,7 +2493,7 @@ function glSetup(){
     const pg=(vs,fs)=>{const p=g.createProgram();g.attachShader(p,sh(g.VERTEX_SHADER,vs));g.attachShader(p,sh(g.FRAGMENT_SHADER,PR+fs));g.linkProgram(p);if(!g.getProgramParameter(p,g.LINK_STATUS))throw new Error(g.getProgramInfoLog(p));return p};
     const sp=pg(`attribute vec3 aP;attribute vec2 aT;uniform mat3 uM;varying vec3 vN;varying vec2 vT;
 void main(){vec3 q=uM*aP;vN=q;vT=aT;gl_Position=vec4(q.xy/1.16,-q.z*.4,1.);}`,
-`uniform sampler2D uD;uniform sampler2D uC;uniform sampler2D uLt;uniform float uRD;uniform float uRC;uniform float uRL;uniform float uHC;uniform float uHL;uniform float uLA;uniform float uLo;uniform float uMode;uniform float uK1;uniform float uK2;uniform float uGlow;uniform vec3 uL;uniform vec3 uA;varying vec3 vN;varying vec2 vT;
+`uniform sampler2D uD;uniform sampler2D uC;uniform sampler2D uLt;uniform float uRD;uniform float uRC;uniform float uRL;uniform float uHC;uniform float uHL;uniform float uLA;uniform float uLo;uniform float uLN;uniform float uMode;uniform float uK1;uniform float uK2;uniform float uGlow;uniform vec3 uL;uniform vec3 uA;varying vec3 vN;varying vec2 vT;
 void main(){
   vec3 N=normalize(vN);
   vec3 col=texture2D(uD,vec2((vT.x-.5+uRD)*.5,vT.y)).rgb;
@@ -2462,10 +2505,10 @@ void main(){
   col=mix(col,c.rgb,c.a*.78);
   float nd=dot(N,uL),sh=smoothstep(-.22,.58,nd);
   col*=mix(uLo,1.08,sh);
-  if(uHL>.5){vec4 l=texture2D(uLt,vec2((vT.x-.5+uRL)*.5,vT.y));col+=l.rgb*l.a*uLA*(1.-smoothstep(-.1,.2,nd));}   /* 야간 조명은 낮 영역에서는 보이지 않는다 */
+  if(uHL>.5){vec4 l=texture2D(uLt,vec2((vT.x-.5+uRL)*.5,vT.y));col+=l.rgb*l.a*uLA*mix(1.,1.-smoothstep(-.1,.2,nd),uLN);}   /* 야간 조명은 낮 영역에서는 보이지 않는다 */
   if(uGlow>.5){float d=length(N.xy-uL.xy*.8);col=mix(col,vec3(1.,.93,.84),.3*(1.-smoothstep(0.,.9,d))*smoothstep(-.1,.4,nd));}
   float rim=pow(1.-max(N.z,0.),2.4);
-  col+=uA*rim*(.2+.8*sh)*.85;
+  col+=uA*rim*(.04+.96*sh)*.85;
   gl_FragColor=vec4(col,1.);
 }`);
     const hp=pg(`attribute vec2 aQ;varying vec2 vQ;void main(){vQ=aQ;gl_Position=vec4(aQ/1.16,0.,1.);}`,
@@ -2510,19 +2553,19 @@ void main(){
   float a=clamp(max(col.r,max(col.g,col.b)),0.,1.);a=max(a,sh);
   gl_FragColor=vec4(min(col,vec3(1.)),a);
 }`);
-    const wp=pg(`attribute vec4 aA;attribute float aB;uniform float uT;uniform vec3 uPl[6];uniform vec2 uC;uniform vec4 uRect;uniform float uRR;uniform float uPs;varying float vS;varying float vG;
+    const wp=pg(`attribute vec4 aA;attribute float aB;uniform float uT;uniform vec3 uPl[6];uniform vec2 uC;uniform vec4 uRect;uniform float uRR;uniform float uPs;varying float vS;varying float vG;varying float vL;
 void main(){
   vec3 pl=uPl[int(aA.w)];float R=aA.x;float th=aA.y+uT*pl.z*.5/(R*sqrt(R));float inc=pl.x+aA.z;
   float ct=cos(th),st=sin(th),ci=cos(inc),si=sin(inc),cO=cos(pl.y),sO=sin(pl.y);
   vec3 P=R*vec3(cO*ct-sO*ci*st,sO*ct+cO*ci*st,si*st);
-  if(P.z<0.&&length(P.xy)<1.){gl_Position=vec4(2.,2.,2.,1.);gl_PointSize=0.;vS=0.;vG=0.;return;}   /* 항성 뒤로 숨는 알갱이 */
+  if(P.z<0.&&length(P.xy)<1.){gl_Position=vec4(2.,2.,2.,1.);gl_PointSize=0.;vS=0.;vG=0.;vL=0.;return;}   /* 항성 뒤로 숨는 알갱이 */
   vec2 pc=uC+vec2(P.x,-P.y)*uRR;
   gl_Position=vec4((pc.x-uRect.x)/(uRect.z-uRect.x)*2.-1.,1.-(pc.y-uRect.y)/(uRect.w-uRect.y)*2.,0.,1.);
   float lit=.5-.5*P.z/length(P);   /* 항성 반대쪽(뒤)에 있으면 빛 받은 면이 보이고, 앞쪽은 어두운 면이 보인다 */
-  vS=.14+.8*lit;vG=.72+.28*aB;gl_PointSize=max(1.5,uPs*(.55+.9*aB));
+  vS=.14+.8*lit;vL=lit;vG=.72+.28*aB;gl_PointSize=max(1.5,uPs*(.55+.9*aB));
 }`,
-`varying float vS;varying float vG;
-void main(){float a=1.-smoothstep(.28,.5,length(gl_PointCoord-.5));float g=vS*vG;gl_FragColor=vec4(vec3(g)*vec3(1.,.985,.96)*a*.92,a*.92);}`);
+`uniform vec3 uTint;varying float vS;varying float vG;varying float vL;
+void main(){float a=1.-smoothstep(.28,.5,length(gl_PointCoord-.5));float g=vS*vG;vec3 c=vec3(g)*vec3(1.,.985,.96)*mix(vec3(1.),uTint,.85*vL)*(1.+.55*vL);gl_FragColor=vec4(min(c,vec3(1.))*a*.92,a*.92);}`);
     const SWN=36000,sw=new Float32Array(SWN*5);
     for(let i=0;i<SWN;i++){const k=Math.floor(Math.random()*6);sw[i*5]=1.22+.17*k+.15*(Math.random()+Math.random()-1);sw[i*5+1]=Math.random()*6.2832;sw[i*5+2]=(Math.random()-.5)*.07;sw[i*5+3]=k;sw[i*5+4]=Math.random()}
     const wb=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,wb);g.bufferData(g.ARRAY_BUFFER,sw,g.STATIC_DRAW);
@@ -2535,8 +2578,8 @@ void main(){float a=1.-smoothstep(.28,.5,length(gl_PointCoord-.5));float g=vS*vG
     const ib=g.createBuffer();g.bindBuffer(g.ELEMENT_ARRAY_BUFFER,ib);g.bufferData(g.ELEMENT_ARRAY_BUFFER,new Uint16Array(ix),g.STATIC_DRAW);
     const qb=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,qb);g.bufferData(g.ARRAY_BUFFER,new Float32Array([-1.16,-1.16,1.16,-1.16,-1.16,1.16,1.16,1.16]),g.STATIC_DRAW);
     const U=(p,n)=>g.getUniformLocation(p,n);
-    Object.assign(GLX,{c,g,sp,hp,bp,wp,wb,SWN,wu:{T:g.getUniformLocation(wp,'uT'),Pl:g.getUniformLocation(wp,'uPl'),C:g.getUniformLocation(wp,'uC'),Rect:g.getUniformLocation(wp,'uRect'),RR:g.getUniformLocation(wp,'uRR'),Ps:g.getUniformLocation(wp,'uPs'),aA:g.getAttribLocation(wp,'aA'),aB:g.getAttribLocation(wp,'aB')},vb,ib,qb,n:ix.length,tris:ix.length/3,bu:{T:g.getUniformLocation(bp,'uT'),S:g.getUniformLocation(bp,'uS'),aQ:g.getAttribLocation(bp,'aQ')},
-      su:{M:U(sp,'uM'),D:U(sp,'uD'),C:U(sp,'uC'),Lt:U(sp,'uLt'),RD:U(sp,'uRD'),RC:U(sp,'uRC'),RL:U(sp,'uRL'),HC:U(sp,'uHC'),HL:U(sp,'uHL'),LA:U(sp,'uLA'),Lo:U(sp,'uLo'),Mode:U(sp,'uMode'),K1:U(sp,'uK1'),K2:U(sp,'uK2'),Glow:U(sp,'uGlow'),L:U(sp,'uL'),A:U(sp,'uA'),aP:g.getAttribLocation(sp,'aP'),aT:g.getAttribLocation(sp,'aT')},
+    Object.assign(GLX,{c,g,sp,hp,bp,wp,wb,SWN,wu:{T:g.getUniformLocation(wp,'uT'),Pl:g.getUniformLocation(wp,'uPl'),C:g.getUniformLocation(wp,'uC'),Rect:g.getUniformLocation(wp,'uRect'),RR:g.getUniformLocation(wp,'uRR'),Ps:g.getUniformLocation(wp,'uPs'),Tint:g.getUniformLocation(wp,'uTint'),aA:g.getAttribLocation(wp,'aA'),aB:g.getAttribLocation(wp,'aB')},vb,ib,qb,n:ix.length,tris:ix.length/3,bu:{T:g.getUniformLocation(bp,'uT'),S:g.getUniformLocation(bp,'uS'),aQ:g.getAttribLocation(bp,'aQ')},
+      su:{M:U(sp,'uM'),D:U(sp,'uD'),C:U(sp,'uC'),Lt:U(sp,'uLt'),RD:U(sp,'uRD'),RC:U(sp,'uRC'),RL:U(sp,'uRL'),HC:U(sp,'uHC'),HL:U(sp,'uHL'),LA:U(sp,'uLA'),Lo:U(sp,'uLo'),LN:U(sp,'uLN'),Mode:U(sp,'uMode'),K1:U(sp,'uK1'),K2:U(sp,'uK2'),Glow:U(sp,'uGlow'),L:U(sp,'uL'),A:U(sp,'uA'),aP:g.getAttribLocation(sp,'aP'),aT:g.getAttribLocation(sp,'aT')},
       hu:{A:U(hp,'uA'),K:U(hp,'uK'),aQ:g.getAttribLocation(hp,'aQ')}});
     const e0=g.createTexture();g.bindTexture(g.TEXTURE_2D,e0);g.texImage2D(g.TEXTURE_2D,0,g.RGBA,1,1,0,g.RGBA,g.UNSIGNED_BYTE,new Uint8Array([0,0,0,0]));GLX.empty=e0;
     c.addEventListener('webglcontextlost',e=>{e.preventDefault();GLX.ok=false;GLX.tried=false;GLX.gen++});
@@ -2583,7 +2626,7 @@ function glSphere(o){
   const cs=Math.cos(o.tilt||0),sn=Math.sin(o.tilt||0),fr=v=>v-Math.floor(v),u=P.su;   // 2D의 cx.rotate(tilt)와 같은 기울기
   g.uniformMatrix3fv(u.M,false,new Float32Array([cs,-sn,0, sn,cs,0, 0,0,1]));
   g.uniform1f(u.RD,fr(o.rD));g.uniform1f(u.RC,fr(o.rC||0));g.uniform1f(u.RL,fr(o.rL||0));
-  g.uniform1f(u.HC,cT?1:0);g.uniform1f(u.HL,lT?1:0);g.uniform1f(u.LA,o.lA||0);g.uniform1f(u.Lo,o.lo==null?.08:o.lo);
+  g.uniform1f(u.HC,cT?1:0);g.uniform1f(u.HL,lT?1:0);g.uniform1f(u.LA,o.lA||0);g.uniform1f(u.Lo,o.lo==null?.08:o.lo);g.uniform1f(u.LN,o.always?0:1);
   g.uniform1f(u.Mode,o.mode||0);g.uniform1f(u.K1,o.k1||0);g.uniform1f(u.K2,o.k2||0);g.uniform1f(u.Glow,o.glow?1:0);
   const LL=o.L||[-.55,.55,.62];g.uniform3f(u.L,LL[0],LL[1],LL[2]);g.uniform3f(u.A,A[0],A[1],A[2]);
   g.activeTexture(g.TEXTURE0);g.bindTexture(g.TEXTURE_2D,dayT);g.uniform1i(u.D,0);
@@ -2607,6 +2650,7 @@ function glHoleBody(b,x,y,r,t){   // 블랙홀: 강착원반·렌즈 아치를 �
   }catch(e){glFail(e);return false}
 }
 /* 다이슨 스웜: 항성 둘레를 도는 회색 알갱이 수만 개. 위치는 정점 셰이더가 계산하므로 CPU 부담이 거의 없다 */
+function swTint(sub){const g=SUNSPEC[sub].glow,m=Math.max(...g)||1;return g.map(v=>v/m)}   // 항성 색(최대 채널 기준 정규화)
 function hasSwarm(b){if(b.swm!=null)return b.swm;const q=mulberry32(b.seed+301);b.swm=(['Y','K','R','B'].indexOf(b.sub)>=0&&q()<.4)?{dens:.55+.45*q(),pl:Array.from({length:6},()=>[(q()-.5)*1.7,q()*6.2832,(.7+.6*q())*(q()<.5?-1:1)])}:0;return b.swm}
 function glSwarm(b,x,y,rr,t){
   if(!CFG.gl||GLX.bad)return false;
@@ -2619,7 +2663,7 @@ function glSwarm(b,x,y,rr,t){
     g.disable(g.DEPTH_TEST);g.enable(g.BLEND);g.blendFunc(g.ONE,g.ONE_MINUS_SRC_ALPHA);
     g.useProgram(P.wp);const u=P.wu;g.bindBuffer(g.ARRAY_BUFFER,P.wb);
     g.enableVertexAttribArray(u.aA);g.vertexAttribPointer(u.aA,4,g.FLOAT,false,20,0);g.enableVertexAttribArray(u.aB);g.vertexAttribPointer(u.aB,1,g.FLOAT,false,20,16);
-    g.uniform1f(u.T,t);g.uniform3fv(u.Pl,new Float32Array(sw.pl.flat()));g.uniform2f(u.C,x,y);g.uniform4f(u.Rect,x0,y0,x1,y1);g.uniform1f(u.RR,rr);g.uniform1f(u.Ps,Math.max(1.5,rr*.011*dpr*sf));
+    g.uniform1f(u.T,t);g.uniform3fv(u.Pl,new Float32Array(sw.pl.flat()));g.uniform2f(u.C,x,y);g.uniform4f(u.Rect,x0,y0,x1,y1);g.uniform1f(u.RR,rr);g.uniform1f(u.Ps,Math.max(1.5,rr*.011*dpr*sf));const tg=swTint(b.sub);g.uniform3f(u.Tint,tg[0],tg[1],tg[2]);
     g.drawArrays(g.POINTS,0,Math.floor(P.SWN*sw.dens));g.disableVertexAttribArray(u.aA);g.disableVertexAttribArray(u.aB);g.disable(g.BLEND);
     cx.drawImage(P.c,0,P.S-hv,wv,hv,x0,y0,x1-x0,y1-y0);
     return true;
@@ -2634,7 +2678,8 @@ function swarm2D(b,x,y,rr,t){   // WebGL이 없을 때: 1,000개 정도만 그�
     if(Z<0&&X*X+Y*Y<1)continue;
     (Z<0?lt:dk).rect(x+X*rr-sz/2,y-Y*rr-sz/2,sz,sz);
   }
-  cx.save();cx.fillStyle='rgba(60,60,64,.9)';cx.fill(dk);cx.fillStyle='rgba(185,184,180,.9)';cx.fill(lt);cx.restore();
+  const tg=swTint(b.sub).map(v=>Math.round(255*Math.min(1,(.55+.45*v)*1.0)));
+  cx.save();cx.fillStyle='rgba(60,60,64,.9)';cx.fill(dk);cx.fillStyle=`rgba(${tg[0]},${tg[1]},${tg[2]},.95)`;cx.fill(lt);cx.restore();
 }
 function drawSwarm(b,x,y,rr,t){if(!glSwarm(b,x,y,rr,t))swarm2D(b,x,y,rr,t)}
 function glFail(e){GLX.bad=1;GLX.info=L('WebGL 오류로 2D로 전환: ','WebGL error, using 2D: ')+(e&&e.message||e)}
@@ -2646,8 +2691,8 @@ function glPlanetBody(b,x,y,r,rot){   // 행성의 구 부분(표면·구름·�
     let a=GLATM[b.kind];if(b.kind==='gas')a=[GASATM[b.gp],.62,1,0];if(!a)return false;
     let k=a[1];if(b.kind==='barren')k=b.o.lava?.5:.12;
     const lt=bodyLight(b);
-    return glSphere({x,y,r,L:lt.L,tilt:b.tilt,day:b.tex,cloud:b.clouds,lights:b.lights,rD:rot,rC:rot*1.4+.2,rL:rot,lA:b.kind==='city'?.9:b.kind==='machine'?.8:.85,
-      lo:.08-(a[2]-1)*.6,glow:b.kind==='city',atm:a[0].map(v=>v/255),k,halo:true});
+    return glSphere({x,y,r,L:lt.L,tilt:b.tilt,day:b.tex,cloud:b.clouds,lights:b.lights,always:b.kind==='machine',rD:rot,rC:rot*1.4+.2,rL:rot,lA:b.kind==='city'?1:b.kind==='machine'?1:1.15,
+      lo:.02,glow:b.kind==='city',atm:a[0].map(v=>v/255),k,halo:true});
   }catch(e){glFail(e);return false}
 }
 function glSunBody(sub,tx,x,y,rr,rot){
