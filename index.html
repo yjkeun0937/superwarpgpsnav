@@ -467,7 +467,7 @@ function makeBody(name,kind,seed,sub,o){
   if(o.ring)b.ring=makeRing(b,r);
   if(o.st)b.st=makeStation(o.st,seed+3);
   if(o.oring)b.orRoll=(r()-.5)*.7;
-  if(o.elev){b.est=makeStation(r()<.5?'octa':'cube',seed+5);b.elevA=-Math.PI/2+(r()<.5?-1:1)*(.3+r()*.45)}
+  if(o.elev){b.est=makeStation('octa',seed+5);b.elevA=-Math.PI/2+(r()<.5?-1:1)*(.3+r()*.45)}
   if(kind==='galaxy')b.gx={spiral:{arms:2,tilt:.5,rot:-.45},grand:{arms:2,tilt:.92,rot:.2},sombrero:{arms:0,tilt:.2,rot:-.25}}[b.sub]||{arms:2,tilt:.6,rot:0};
   return b;
 }
@@ -517,12 +517,13 @@ function* genEarth(b){
     :[[0,215,200,140],[.04,60,118,56],[.3,46,96,46],[.5,112,116,68],[.72,120,102,86],[.88,150,150,152],[1,245,248,250]]);
   const sand=pal===0?[205,172,104]:pal===1?[190,150,120]:[200,150,90];
   const c=yield* pix(512,256,(u,v,d,o)=>{
-    const lat=Math.abs(v-.5)*2,h=fbm(u*6,v*3.4,6,6,sd),m=fbm(u*5+3,v*3+1,5,4,sd+50);
+    const lat=Math.abs(v-.5)*2,uw=u+(vn(u*4,v*2,4,sd+101)-.5)*.14,vw=v+(vn(u*4+1,v*2+2,4,sd+131)-.5)*.12,   // 격자 무늬(사각형)가 눈에 띄지 않게 좌표를 살짝 비튼다 (가로는 그대로 이어짐)
+      h=fbm(uw*6,vw*3.4,6,6,sd),m=fbm(uw*5+3,vw*3+1,5,4,sd+50);
     let R,G,B;
     if(h<sea){const i=(clamp((sea-h)/.2,0,1)*255|0)*3;R=water[i];G=water[i+1];B=water[i+2]}
     else{
       const t=(h-sea)/(1-sea),i=(clamp(t*1.25,0,1)*255|0)*3;R=land[i];G=land[i+1];B=land[i+2];
-      if(m<.44&&lat<.72&&t>.03){const k=sstep(.44,.36,m)*.85;R+=(sand[0]-R)*k;G+=(sand[1]-G)*k;B+=(sand[2]-B)*k}
+      {const k=sstep(.44,.36,m)*.85*(1-sstep(.6,.74,lat))*sstep(.03,.09,t);R+=(sand[0]-R)*k;G+=(sand[1]-G)*k;B+=(sand[2]-B)*k}
     }
     const cap=.84+.1*vn(u*14,v*7,14,sd)-.04,k=sstep(cap,cap+.05,lat);
     R+=(236-R)*k;G+=(244-G)*k;B+=(250-B)*k;
@@ -530,7 +531,7 @@ function* genEarth(b){
   });
   b.tex=dbl(c);
   const cl=yield* pix(256,128,(u,v,d,o)=>{
-    const n=fbm(u*6+7,v*3,6,5,sd+9),m=fbm(u*2+1,v*1.3,2,3,sd+70),a=clamp((n-.575+.1*(m-.5))*3.6,0,1)*.85;
+    const uw=u+(vn(u*4+3,v*2,4,sd+141)-.5)*.14,vw=v+(vn(u*4+2,v*2+1,4,sd+151)-.5)*.12,n=fbm(uw*6+7,vw*3,6,5,sd+9),m=fbm(uw*2+1,vw*1.3,2,3,sd+70),a=clamp((n-.575+.1*(m-.5))*3.6,0,1)*.85;
     put(d,o,255,255,255,a*255);
   });
   b.clouds=dbl(cl);b.ready=true;
@@ -541,7 +542,7 @@ function* genBarren(b){
   const lut=mkLut(lava?[[0,24,18,16],[.5,70,52,44],[1,120,96,82]]:[[0,52,44,40],[.5,128,110,96],[1,190,172,150]]);
   const tint=lava?[1,.9,.85]:[1+(hue-30)/220,1,1-(hue-30)/260];
   const c=yield* pix(512,256,(u,v,d,o)=>{
-    const h=fbm(u*6,v*3,6,6,sd),mare=sstep(.42,.55,fbm(u*3+5,v*1.5,3,3,sd+4)),i=(clamp(h*(1-.3*mare)+.05,0,1)*255|0)*3;
+    const uw=u+(vn(u*4,v*2,4,sd+101)-.5)*.14,vw=v+(vn(u*4+1,v*2+2,4,sd+131)-.5)*.12,h=fbm(uw*6,vw*3,6,6,sd),mare=sstep(.42,.55,fbm(uw*3+5,vw*1.5,3,3,sd+4)),i=(clamp(h*(1-.3*mare)+.05,0,1)*255|0)*3;
     let R=lut[i]*tint[0],G=lut[i+1]*tint[1],B=lut[i+2]*tint[2];
     if(lava){const rd=Math.abs(fbm(u*9+2,v*4.5,9,4,sd+9)-.5),k=clamp(1-rd/.028,0,1);R+=k*255;G+=k*120;B+=k*20}
     put(d,o,R,G,B);
@@ -568,7 +569,7 @@ const GASPAL=[
 function* genGas(b){
   const r=mulberry32(b.seed+7),sd=Math.floor(r()*200),lut=mkLut(GASPAL[b.gp]);
   const c=yield* pix(512,256,(u,v,d,o)=>{
-    const w=fbm(u*3,v*5,3,4,sd)*.09,n=fbm(u*1.6,(v+w)*16,2,5,sd+3),s=.5+.5*Math.sin((v+w*.7)*44+n*3),t=clamp(.62*n+.38*s,0,1);
+    const w=fbm(u*3,v*5,3,4,sd)*.09,n=fbm(u*2,(v+w)*16,2,5,sd+3),s=.5+.5*Math.sin((v+w*.7)*44+n*3),t=clamp(.62*n+.38*s,0,1);
     const i=(clamp((t-.2)*1.5,0,1)*255|0)*3,pole=sstep(.78,1,Math.abs(v-.5)*2)*.35;
     put(d,o,lut[i]*(1-pole),lut[i+1]*(1-pole),lut[i+2]*(1-pole*.6));
   },(g)=>{
@@ -578,7 +579,7 @@ function* genGas(b){
       gr.addColorStop(0,`hsla(${(b.hue+190)%360},55%,70%,.95)`);gr.addColorStop(.55,`hsla(${(b.hue+8)%360},60%,45%,.8)`);gr.addColorStop(1,'rgba(0,0,0,0)');
       g.fillStyle=gr;g.beginPath();g.ellipse(sx+dx,sy,40,19,0,0,6.283);g.fill();
     }
-    for(let i=0;i<6;i++){g.fillStyle='rgba(255,255,255,.32)';g.beginPath();g.ellipse(r()*512,40+r()*176,5+r()*8,2.5+r()*3,0,0,6.283);g.fill()}
+    for(let i=0;i<6;i++){const ex=r()*512,ey=40+r()*176,ea=5+r()*8,eb=2.5+r()*3;for(const dx of[0,-512,512]){g.fillStyle='rgba(255,255,255,.32)';g.beginPath();g.ellipse(ex+dx,ey,ea,eb,0,0,6.283);g.fill()}}   /* 이음매에 걸려도 끊기지 않게 좌우로 이어 그린다 */
   });
   b.tex=dbl(c);b.ready=true;
 }
@@ -593,7 +594,7 @@ function* genCity(b){
   const L=yield* pix(512,256,(u,v,d,o,x,y)=>{
     const lat=Math.abs(v-.5)*2,D=fbm(u*6+3,v*3+1,6,5,sd),cap=1-sstep(.78,.95,lat);
     const dens=sstep(.3,.5,D)*cap,r1=Math.abs(fbm(u*10+11,v*5,10,3,sd+3)-.5),road=clamp(1-r1/.02,0,1),r2=Math.abs(fbm(u*24+5,v*12,24,2,sd+8)-.5),road2=clamp(1-r2/.011,0,1);
-    const sp=hash(o+sd),blob=sstep(.52,.72,D),I=clamp(dens*(.26+.55*road*(D>.3?1:0)+.25*road2)+blob*.4+(sp<dens*.08?.7*dens:0),0,1)*cap*.72;
+    const sp=hash(o+sd),blob=sstep(.52,.72,D),I=clamp(dens*(.26+.55*road*sstep(.27,.34,D)+.25*road2)+blob*.4+(sp<dens*.08?.7*dens:0),0,1)*cap*.72;
     const tint=tintC&&fbm(u*3+9,v*1.5,3,2,sd+20)>.55;
     put(d,o,255*I*(tint?.5:1),(150+60*sp)*I*(tint?.95:.9),(70+(tint?160:30)*sp)*I,255);
   });
@@ -707,12 +708,13 @@ function* genAsteroid(b){
 }
 
 /* 궤도 환(인공 궤도 링) — 행성 둘레를 도는 거대한 인공 구조물. 앞/뒤 절반을 미리 그려 둔다 */
+const ARTK=.72;   // 인공물(정거장·궤도환)의 밝기 배율
 const ORU=240,ORE=.3,ORR=1.55,ORW=.085,ORH=.03;
 function* genOring(b){
   const r=mulberry32(b.seed+41),W2=Math.ceil((ORR+ORW+.14)*2*ORU),H2=300,cs=Math.cos(ORE),sn=Math.sin(ORE);
   const mk=()=>{const c=document.createElement('canvas');c.width=W2;c.height=H2;return c};
   const cB=mk(),cF=mk(),gB=cB.getContext('2d'),gF=cF.getContext('2d');
-  const N=240,HULL=[[160,168,184],[188,176,160],[140,162,180]][Math.floor(r()*3)],ACC=[[255,214,140],[170,225,255],[190,255,200]][Math.floor(r()*3)];
+  const N=240,HULL=[[160,168,184],[188,176,160],[140,162,180]][Math.floor(r()*3)].map(x=>x*ARTK),ACC=[[255,214,140],[170,225,255],[190,255,200]][Math.floor(r()*3)];
   const P=(rad,y,th)=>{const x=rad*Math.cos(th),z=rad*Math.sin(th);return[W2/2+x*ORU,H2/2+(z*sn-y*cs)*ORU]};
   const lit=(nx,ny,nz)=>{const vy=ny*cs-nz*sn,vz=ny*sn+nz*cs;return .3+.7*Math.abs(nx*LDIR[0]+vy*LDIR[1]+vz*LDIR[2])};
   const poly=(g,pts,col,I,ln)=>{g.fillStyle=`rgb(${col[0]*I|0},${col[1]*I|0},${col[2]*I|0})`;g.strokeStyle=g.fillStyle;g.lineWidth=.8;g.beginPath();pts.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath();g.fill();g.stroke()};
@@ -770,7 +772,7 @@ function drawElev(b,x,y,r,t){
   // 승강 캐빈
   for(let k=0;k<4;k++){const f=((t*.035+k/4)%1),px=x0+(x1-x0)*f,py=y0+(y1-y0)*f;glowDisc(px,py,0,r*.07,'255,210,140',.9,0);cx.fillStyle='rgba(255,250,235,.95)';cx.fillRect(px-r*.012,py-r*.012,r*.024,r*.024)}
   cx.restore();
-  drawStation(b.est,{x:x1,y:y1,z:0},r*1.7,t);
+  drawStation(b.est,{x:x1,y:y1,z:0},r*1.7,t,a);
 }
 /* 기계(행성도시) 행성 */
 function* genMachine(b){
@@ -863,16 +865,12 @@ function makeStation(type,seed){
       }
     });
     pyr([0,1,0],.05,[0,2.05,0],[205,205,215]);box([0,2.15,0],.16,.05,.16,[210,60,40]);
-    [-1,1].forEach(s=>{box([s*1.25,0,0],.25,.05,.05,[120,126,140]);panel([s*1.5,0,-.8],[s,0,0],[0,0,1],5,2,2,1.6)});
   }else if(type==='octa'){
     const subdiv=(t,l)=>{if(!l)return[t];const m=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2],[a,b,c]=t,ab=m(a,b),bc=m(b,c),ca=m(c,a);
       return[...subdiv([a,ab,ca],l-1),...subdiv([ab,b,bc],l-1),...subdiv([ca,bc,c],l-1),...subdiv([ab,bc,ca],l-1)]};
     for(const sx of[-1,1])for(const sy of[-1,1])for(const sz of[-1,1])
       subdiv([[sx,0,0],[0,sy,0],[0,0,sz]],2).forEach(t=>hull(t,.84+.2*r()));
     [1,-1].forEach(s=>{pyr([0,s*1.0,0],.07,[0,s*2.4,0],[200,200,212])});
-    [[1,0],[-1,0],[0,1],[0,-1]].forEach(d=>{
-      const ux=[d[0],0,d[1]],uz=[-d[1],0,d[0]];panel([ux[0]*1.05+uz[0]*-.5,0,ux[2]*1.05+uz[2]*-.5],ux,uz,4,2,1.2,1);
-    });
     size=.115;
   }else{   // wheel
     const NS=34,R=1,tk=.075,hw=.2;
@@ -905,10 +903,14 @@ function stationPos(b,x,y,r,t){
   const a=t*.27+b.seed*.37,rho=r*(b.ring?2.3:1.62);
   return{x:x+Math.cos(a)*rho,y:y+Math.sin(a)*rho*.3-rho*.04,z:Math.sin(a)};
 }
-function drawStation(st,sp,r,t){
+function drawStation(st,sp,r,t,al){   // al: 케이블 방향(화면 각도). 주면 정팔면체의 위·아래 꼭짓점 축이 케이블 연장선에 놓인다
   const s=r*st.size*(1+.32*sp.z),F=st.F;   // 행성 뒤(z<0)로 돌아가면 멀어져서 작아진다
   let M;
-  if(st.axis==='z')M=mm(rotM('x',1.05),mm(rotM('y',.45+.14*Math.sin(t*.2)),rotM('z',t*.5)));
+  if(al!=null){
+    const tl=.38,cl=Math.cos(tl),e=[Math.cos(al)*cl,-Math.sin(al)*cl,Math.sin(tl)];   // 모델 y축 → 화면에서 케이블 방향(살짝 관람자 쪽으로 기울임)
+    const xl=Math.hypot(e[0],e[1])||1,xa=[e[1]/xl,-e[0]/xl,0],za=[xa[1]*e[2]-xa[2]*e[1],xa[2]*e[0]-xa[0]*e[2],xa[0]*e[1]-xa[1]*e[0]];   // xa=e×z 방향, za=xa×e
+    M=mm([[xa[0],e[0],za[0]],[xa[1],e[1],za[1]],[xa[2],e[2],za[2]]],rotM('y',t*.35+st.type.length));
+  }else if(st.axis==='z')M=mm(rotM('x',1.05),mm(rotM('y',.45+.14*Math.sin(t*.2)),rotM('z',t*.5)));
   else M=mm(rotM('x',.5+.18*Math.sin(t*.3)),mm(rotM('y',t*.38),rotM('z',.3)));
   const out=[];
   for(let i=0;i<F.length;i++){
@@ -923,7 +925,7 @@ function drawStation(st,sp,r,t){
     const ux=P[1][0]-P[0][0],uy=P[1][1]-P[0][1],uz=P[1][2]-P[0][2],vx=P[P.length-1][0]-P[0][0],vy=P[P.length-1][1]-P[0][1],vz=P[P.length-1][2]-P[0][2];
     let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;const nl=Math.hypot(nx,ny,nz)||1;
     const lam=Math.abs((nx*LDIR[0]+ny*LDIR[1]+nz*LDIR[2])/nl),I=.2+.8*lam+(f.k===1?Math.pow(lam,10)*.5:0);
-    cx.fillStyle=`rgb(${f.c[0]*I|0},${f.c[1]*I|0},${f.c[2]*I|0})`;
+    cx.fillStyle=`rgb(${f.c[0]*I*ARTK|0},${f.c[1]*I*ARTK|0},${f.c[2]*I*ARTK|0})`;
     cx.beginPath();P.forEach((q,i)=>{const px=sp.x+q[0]*s,py=sp.y-q[1]*s;i?cx.lineTo(px,py):cx.moveTo(px,py)});cx.closePath();cx.fill();
     cx.strokeStyle='rgba(6,10,16,.5)';cx.lineWidth=lw;cx.stroke();
     if(f.k===3){   // 창문 불빛
