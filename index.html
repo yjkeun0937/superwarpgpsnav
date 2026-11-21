@@ -30,7 +30,7 @@ html,body{height:100%;background:#000;color:var(--fg);overflow:hidden;font-famil
 #hdg.est{opacity:.5}
 #bFs{position:fixed;z-index:40;top:max(4px,env(safe-area-inset-top));right:max(4px,env(safe-area-inset-right));width:28px;height:28px;padding:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);color:var(--lab);border:1px solid var(--line);cursor:pointer;-webkit-tap-highlight-color:transparent}
 #bFs[hidden]{display:none}#bFs:active{background:var(--fg);color:#021}
-#perf{position:fixed;z-index:35;left:62px;right:62px;top:300px;padding:3px 5px;background:rgba(0,0,0,.55);border:1px solid var(--line);color:#9fffe6;font:10px/1.35 monospace;pointer-events:auto;white-space:pre;-webkit-user-select:none;user-select:none}
+#perf{position:fixed;z-index:25;left:62px;right:62px;top:300px;padding:3px 5px;background:rgba(0,0,0,.55);border:1px solid var(--line);color:#9fffe6;font:10px/1.35 monospace;pointer-events:auto;white-space:pre;-webkit-user-select:none;user-select:none}
 #perf[hidden]{display:none}
 #stardate{margin-right:34px;font:14px 'VT323','Nanum Gothic Coding',monospace;color:var(--lab);text-shadow:0 1px 3px #000;white-space:nowrap}
 #nav{display:flex;gap:10px;align-items:center;margin:10px 84px 0 10px;color:var(--amb)}
@@ -414,7 +414,7 @@ const LY_PER_KM=1000;  // 1 km = 1,000 광년
 /* ---------------- 설정 (CONFIG) ---------------- */
 const CKEY='warpnav.cfg',CFG={ver:4,fly:1,st:1,fq:{fly:1,ship:.75},msg:{},off:{},shMax:6,shSp:1,lang:'ko',gl:0,glOnly:0,perf:0};   // off: 등장하지 않게 끈 천체 이름
 const FQB={fly:[16,42],ship:[9,27]};   // 기준 간격(초): 실제 간격 = 기준 ÷ 배율
-const fqTxt=(k,v)=>v>0?Math.round(FQB[k][0]/v)+'~'+Math.round(FQB[k][1]/v)+' '+'<span class="u">'+L('초','sec')+'</span>':'<span class="u">'+L('끔','OFF')+'</span>';
+const fqTxt=(k,v)=>v>0?Math.round(FQB[k][0]/v)+'-'+Math.round(FQB[k][1]/v)+' '+'<span class="u">'+L('초','sec')+'</span>':'<span class="u">'+L('끔','OFF')+'</span>';
 const MCOL={g:'#6dff9c',a:'#ffb21c',r:'#ff4136'};                 // 속도 막대와 같은 색 (초록 / 주황 / 빨강)
 const MDEF={lost:{on:1,c:'r',hz:3},route:{on:1,c:'a',hz:0},stop:{on:1,c:'g',hz:.5},arrive:{on:1,c:'g',hz:1.2},depart:{on:1,c:'g',hz:0}};   // hz: 점등 속도, 0이면 점등하지 않음
 const MNAME={lost:['GPS 신호 소실 / 대기','GPS signal lost / waiting'],route:['경로 변경 (항로 이탈)','Course change (off route)'],stop:['정차 중','Stopped'],arrive:['도착 직전','Arriving'],depart:['출발 (첫 이동)','Departure (first move)']};
@@ -2472,7 +2472,7 @@ function perfShow(){
   const el=$('perf');el.hidden=!CFG.perf;if(!CFG.perf)return;
   const f=(n,d)=>n.toFixed(d),line=(nm,st,js,n)=>st?`${nm} ${f(st.fps,0)}fps ${f(st.avg,1)}/${f(st.p95,1)}/${f(st.max,0)}ms js${f(js,1)} n${n}`:`${nm} -`;
   el.textContent=line('ALL ',pfSt(PF.all),pfAv(PF.js),PF.all.length)+'\n'+line('BODY',pfSt(PF.body),pfAv(PF.bjs),PF.body.length)
-    +`\nplanet ${f(pfAv(PF.bm),2)}ms · 3D ${CFG.gl&&GLX.ok?'ON':'OFF'} · dpr ${dpr}`+(CFG.gl&&GLX.ok?` · ${GLX.D}px · up ${f(GLX.upMs,1)}ms`:'')+'\n(fps avg/p95/max ms)';
+    +`\nplanet ${f(pfAv(PF.bm),2)}ms · 3D ${CFG.gl&&GLX.ok?'ON':'OFF'} · dpr ${dpr.toFixed(2)}`+(CFG.gl&&GLX.ok?` · ${GLX.D}px · up ${f(GLX.upMs,1)}ms`:'')+'\n(fps avg/p95/max ms)';
 }
 setInterval(perfShow,500);
 $('perf').onclick=()=>{for(const k in PF)PF[k].length=0;GLX.upMs=0};
