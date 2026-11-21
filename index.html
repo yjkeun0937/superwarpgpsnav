@@ -1041,7 +1041,8 @@ function stationPos(b,x,y,r,t){
 /* 정거장을 드나드는 빛무리: 정거장 크기의 2배쯤 떨어진 곳에서 나타나 정거장으로 가거나, 정거장에서 출발해 그만큼 떨어진 곳에서 사라진다. 속도는 위성과 비슷(행성 반지름의 약 .13배/초) */
 const dotS=r=>Math.max(.75,r*.014)*Math.min(1,.55+r/160);
 function drawTraffic(sp,st,rS,rP,t,seed,hide){
-  const s=rS*st.size*(1+.32*sp.z),dist=s*2.2,tr=dist/Math.max(1,rP*.13),ds=dotS(rP),hs=ds*3.2,H=new Path2D(),D=new Path2D(),B=new Path2D();let n=0;
+  const s=rS*st.size*(1+.32*sp.z),dist=s*2.2,tr=2.2*st.size*rS/Math.max(1,rP*.065),   // 이동 시간은 정거장의 기준 크기로 정해 일정하다 → 속도는 정거장의 보이는 크기에 비례(작아 보일 때 느려진다). 위성의 절반 속도
+  ds=dotS(rP),hs=ds*3.2,H=new Path2D(),D=new Path2D(),B=new Path2D();let n=0;
   for(let i=0;i<7;i++){
     const P=tr+1.2+4*hash(seed*17+i*131+5),per=P,off=hash(seed*23+i*77+9)*P,k=Math.floor((t+off)/per),u=((t+off)%per)/tr;
     if(u>=1)continue;
@@ -1733,10 +1734,12 @@ function pulsarPar(b){
   if(ps.real){ps.al=o.al*d;ps.ze=o.ze*d;ps.P=o.P;ps.Pd=Math.max(o.P,.45)}
   else{
     ps.al=(6+84*q())*d;   // 6°~90°: 좁은 원뿔 ~ 자전축에 수직
-    ps.ze=q()<.6?Math.min(Math.PI,ps.al+(q()-.5)*.14):Math.acos((.25+.75*q())*(q()<.5?-1:1));   // 시선: 빔이 지나가는 경우(60%) 또는 자전축 쪽에서 비스듬히 보는 경우
     ps.P=Math.exp(Math.log(.45)+q()*Math.log(6/.45));ps.Pd=ps.P;
   }
-  const psi=q()*6.2832,sz=Math.sin(ps.ze),w=[sz*Math.cos(psi),sz*Math.sin(psi),Math.cos(ps.ze)],a=Math.abs(w[2])<.9?[0,0,1]:[1,0,0];
+  let w;
+  if(ps.real){const psi=q()*6.2832,sz=Math.sin(ps.ze);w=[sz*Math.cos(psi),sz*Math.sin(psi),Math.cos(ps.ze)]}
+  else{const tl=(q()*2-1)*30*d;w=[Math.sin(tl),Math.cos(tl),0];ps.ze=Math.PI/2}   // 가상 펄서: 자전축은 화면(xy) 안에서 수직축에서 ±30° 이내로 기울어져 있다(시선과 수직)
+  const a=Math.abs(w[2])<.9?[0,0,1]:[1,0,0];
   let e1=[w[1]*a[2]-w[2]*a[1],w[2]*a[0]-w[0]*a[2],w[0]*a[1]-w[1]*a[0]];const l=Math.hypot(...e1);e1=e1.map(v=>v/l);
   const e2=[w[1]*e1[2]-w[2]*e1[1],w[2]*e1[0]-w[0]*e1[2],w[0]*e1[1]-w[1]*e1[0]];
   ps.w=w;ps.e1=e1;ps.e2=e2;ps.ph=q()*6.2832;
