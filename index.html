@@ -647,9 +647,30 @@ function* genEarth(b){
     LA.m=fbm(uw*5+3,vw*3+1,5,4,sd+50);return (fbm(uw*6,vw*3.4,6,6,sd)-sea)/(1-sea)};
   const lr=mulberry32(b.seed+92);
   b.lights=dbl(yield* genLights(b,sd,LA,{nc:70+Math.floor(lr()*30),alpha:.8+.25*lr(),rmin:6,rmax:46,sep:34,d0:90,dm:5200,k:.6,gain:1.6,link:330,link2:.55,ed0:.12,ed1:.9,rural:700}));
-  const cl=yield* pix(256,128,(u,v,d,o)=>{
-    const uw=u+(vn(u*4+3,v*2,4,sd+141)-.5)*.14,vw=v+(vn(u*4+2,v*2+1,4,sd+151)-.5)*.12,n=fbm(uw*6+7,vw*3,6,5,sd+9),m=fbm(uw*2+1,vw*1.3,2,3,sd+70),a=clamp((n-.575+.1*(m-.5))*3.6,0,1)*.85;
-    put(d,o,255,255,255,a*255);
+  /* 구름: 현실적인 구름 띠를 흉내 낸다 — ① 위도별 기후대(적도 수렴대의 두꺼운 구름, 아열대(±25°)의 맑은 띠, 중위도(±50°) 폭풍 경로)
+     ② 도메인 워핑한 fbm 으로 덩어리(적운·층운) ③ 저기압 소용돌이(북반구 반시계, 남반구 시계 — 좌표를 나선으로 비튼다) ④ 경도 방향으로 늘인 가는 권운 줄기.
+     텍스처는 지표와 같은 지도라 지표와 같은 속도로 돈다 */
+  const cr=mulberry32(b.seed+161),cyc=Array.from({length:3+Math.floor(cr()*3)},(_,i)=>{const nh=cr()<.5?1:-1;return{u:cr(),phi:nh*(.35+cr()*.7),R:.28+cr()*.3,s:nh*(1.6+cr()*1.4)}});
+  const gau=(x,m,w)=>Math.exp(-((x-m)/w)*((x-m)/w)),TP=6.2832;
+  const cl=yield* pix(512,256,(u,v,d,o)=>{
+    const phi=Math.asin(clamp(1-2*v,-1,1)),aphi=Math.abs(phi);
+    let uu=u,vv=v,boost=0;
+    for(const c of cyc){   // 저기압: 중심 둘레로 좌표를 비튼다(중심에 가까울수록 많이)
+      let du=u-c.u;du-=Math.round(du);const cc=Math.cos(c.phi),dx=du*TP*cc,dy=phi-c.phi,dd=Math.hypot(dx,dy)/c.R;
+      if(dd<2.2){const f=Math.exp(-dd*dd),th=c.s*f,cs=Math.cos(th),sn=Math.sin(th),rx=dx*cs-dy*sn,ry=dx*sn+dy*cs;
+        uu+=(rx-dx)/(TP*cc);const ph2=phi+(ry-dy);vv+=(1-Math.sin(ph2))/2-v;boost+=.3*f}
+    }
+    const wx=(vn(uu*4+5,vv*2,4,sd+171)-.5)*.16,wy=(vn(uu*4+9,vv*2+3,4,sd+181)-.5)*.14;   // 도메인 워핑: 구름 가장자리가 구불구불해진다
+    const n=fbm((uu+wx)*6+7,(vv+wy)*3,6,6,sd+9),big=fbm(uu*2+1,vv*1.3,2,3,sd+70);
+    // 위도별 구름 양: 적도(+5°) 수렴대 ↑, 아열대 ±25° ↓, 중위도 ±50° 폭풍 경로 ↑, 극 쪽은 보통
+    const deg=aphi*57.3,band=.34+.5*gau(phi*57.3,5,9)+.55*gau(deg,50,13)-.32*gau(deg,25,8)+boost;
+    const thr=.7-band*.3-.12*(big-.5);
+    let a=clamp((n-thr)*4.2,0,1);a*=a*(3-2*a);   // 가장자리는 부드럽게, 중심은 두껍게
+    // 권운: 경도 방향으로 길게 늘인 가늘고 옅은 줄기
+    const ci=fbm((uu+wx*2)*2.5+3,(vv+wy)*16,3,4,sd+201),cir=clamp((ci-.56)*5,0,1)*.38*(.5+.5*gau(deg,38,26));
+    a=Math.max(a*.92,cir);
+    const sh=.84+.16*clamp((n-.4)*2.2,0,1);   // 두꺼운 곳은 더 하얗고 얇은 곳은 약간 어둡다
+    put(d,o,252*sh,254*sh,255*sh,Math.min(1,a)*255);
   });
   b.clouds=dbl(cl);b.ready=true;
 }
@@ -1539,17 +1560,23 @@ function atmosphere(x,y,r,rgb,k){
    L은 화면 기준(x 오른쪽, y 위, z 관람자 쪽) 단위 벡터이며 L.z=1-2×(어두운 비율). */
 function bodyLight(b){
   if(b.lt)return b.lt;
-  const r=mulberry32(b.seed+77),dark=r()*.5,lz=1-2*dark,sg=r()<.5?-1:1,s=Math.sqrt(Math.max(0,1-lz*lz));
-  let L;
-  const plane=(T,f)=>{   // 평면 기저: e1(화면 안), e2(깊이 성분 c). 평면과 나란한 방향 = cosψ·e1 + sinψ·e2
-    const c=Math.sqrt(1-f*f),e1=[Math.cos(T),-Math.sin(T),0],e2=[-f*Math.sin(T),-f*Math.cos(T),c],sp=Math.min(1,lz/c),cp=sg*Math.sqrt(1-sp*sp);
-    return[cp*e1[0]+sp*e2[0],cp*e1[1]+sp*e2[1],cp*e1[2]+sp*e2[2]];
-  };
-  if(b.o&&b.o.oring)L=plane(b.orRoll,Math.sin(ORE));
-  else if(b.ring)L=plane(b.ring.tilt,b.ring.flat);
-  else if(b.o&&b.o.elev){const a=b.elevA;L=[sg*Math.cos(a)*s,-sg*Math.sin(a)*s,lz]}
-  else{const ph=r()*6.2832;L=[Math.cos(ph)*s,Math.sin(ph)*s,lz]}
-  const l=Math.hypot(...L)||1;L=L.map(v=>v/l);
+  /* 빛 방향: 자전축이 화면에서 수직이므로 낮/밤 경계가 너무 기울지 않게, 빛이 오는 방향의 화면 성분이 수평에서 ±30° 안에 놓이게 한다.
+     고리·궤도환 행성은 빛이 고리 평면 안에서 오므로, 조건에 맞을 때까지 밝기(위상)를 다시 뽑는다 */
+  const r=mulberry32(b.seed+77),T30=Math.tan(Math.PI/6);
+  let L,dark;
+  for(let k=0;k<60;k++){
+    dark=r()*.5;const lz=1-2*dark,sg=r()<.5?-1:1,s=Math.sqrt(Math.max(0,1-lz*lz));
+    const plane=(T,f)=>{   // 평면 기저: e1(화면 안), e2(깊이 성분 c). 평면과 나란한 방향 = cosψ·e1 + sinψ·e2
+      const c=Math.sqrt(1-f*f),e1=[Math.cos(T),-Math.sin(T),0],e2=[-f*Math.sin(T),-f*Math.cos(T),c],sp=Math.min(1,lz/c),cp=sg*Math.sqrt(1-sp*sp);
+      return[cp*e1[0]+sp*e2[0],cp*e1[1]+sp*e2[1],cp*e1[2]+sp*e2[2]];
+    };
+    if(b.o&&b.o.oring)L=plane(b.orRoll,Math.sin(ORE));
+    else if(b.ring)L=plane(b.ring.tilt,b.ring.flat);
+    else{const ph=(r()<.5?0:Math.PI)+(r()*2-1)*(Math.PI/6);L=[Math.cos(ph)*s,Math.sin(ph)*s,lz]}
+    const l=Math.hypot(...L)||1;L=L.map(v=>v/l);
+    if(Math.abs(L[1])<=T30*Math.abs(L[0])+1e-6)break;
+    if(k===59){const hs=Math.sqrt(Math.max(0,1-lz*lz));L=[sg*hs,0,lz]}   // 끝내 안 맞으면 수평 방향으로
+  }
   return b.lt={L,dark:(1-L[2])/2};
 }
 function terminator(x,y,r,dark,L){   // 2D 대체 경로: 빛 방향·위상에 따라 그라디언트 중심을 옮긴다
@@ -1578,7 +1605,7 @@ function drawPlanet(b,x,y,r,t){
   if(!glPlanetBody(b,x,y,r,rot)){
   cx.save();circPath(x,y,r);cx.clip();cx.translate(x,y);cx.rotate(b.tilt);cx.translate(-x,-y);
   sphereTex(b.tex,x,y,r*1.02,rot);
-  if(b.clouds)sphereTex(b.clouds,x,y,r*1.02,rot*1.4+.2,.78);
+  if(b.clouds)sphereTex(b.clouds,x,y,r*1.02,rot,.78);
   cx.restore();
   if(b.kind==='city'){
     terminator(x,y,r,1.05,LT);
@@ -2907,7 +2934,7 @@ function glPlanetBody(b,x,y,r,rot){   // 행성의 구 부분(표면·구름·�
     let a=GLATM[b.kind];if(b.kind==='gas')a=[GASATM[b.gp],.62,1,0];if(!a)return false;
     let k=a[1];if(b.kind==='barren')k=b.o.lava?.5:.12;
     const lt=bodyLight(b);
-    return glSphere({x,y,r,L:lt.L,tilt:b.tilt,day:b.tex,cloud:b.clouds,lights:b.lights,always:b.kind==='machine'||!!b.lava,rD:rot,rC:rot*1.4+.2,rL:rot,lA:b.kind==='city'?1:b.kind==='machine'?1:b.lava?.95:1.15,
+    return glSphere({x,y,r,L:lt.L,tilt:b.tilt,day:b.tex,cloud:b.clouds,lights:b.lights,always:b.kind==='machine'||!!b.lava,rD:rot,rC:rot,rL:rot,lA:b.kind==='city'?1:b.kind==='machine'?1:b.lava?.95:1.15,
       lo:.02,glow:b.kind==='city',atm:a[0].map(v=>v/255),k,halo:true});
   }catch(e){glFail(e);return false}
 }
