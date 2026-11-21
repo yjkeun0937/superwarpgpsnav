@@ -516,6 +516,8 @@ function* genEarth(b){
     :pal===2?[[0,225,195,150],[.04,175,105,60],[.3,150,80,45],[.5,170,115,75],[.72,120,95,80],[.88,160,150,145],[1,245,246,250]]
     :[[0,215,200,140],[.04,60,118,56],[.3,46,96,46],[.5,112,116,68],[.72,120,102,86],[.88,150,150,152],[1,245,248,250]]);
   const sand=pal===0?[205,172,104]:pal===1?[190,150,120]:[200,150,90];
+  const lc=document.createElement('canvas');lc.width=512;lc.height=256;const lg=lc.getContext('2d'),lid=lg.createImageData(512,256),ld=lid.data,lr=mulberry32(b.seed+91),
+    LG={cw:.3+.7*lr(),tint:lr()<.3?[190,225,255]:[255,214,150]};   // cw: 해안선형(1)↔도시 밀집형(0) 비율, tint: 불빛 색
   const c=yield* pix(512,256,(u,v,d,o)=>{
     const lat=Math.abs(v-.5)*2,uw=u+(vn(u*4,v*2,4,sd+101)-.5)*.14,vw=v+(vn(u*4+1,v*2+2,4,sd+131)-.5)*.12,   // 격자 무늬(사각형)가 눈에 띄지 않게 좌표를 살짝 비튼다 (가로는 그대로 이어짐)
       h=fbm(uw*6,vw*3.4,6,6,sd),m=fbm(uw*5+3,vw*3+1,5,4,sd+50);
@@ -528,7 +530,16 @@ function* genEarth(b){
     const cap=.84+.1*vn(u*14,v*7,14,sd)-.04,k=sstep(cap,cap+.05,lat);
     R+=(236-R)*k;G+=(244-G)*k;B+=(250-B)*k;
     put(d,o,R,G,B);
+    /* 야간 조명: 육지에서만, 해안선을 따라 또는 특정 지역에 몰려서 (낮 영역에서는 셰이더가 숨긴다) */
+    let I=0;const tt=(h-sea)/(1-sea);
+    if(tt>=0&&lat<.84){
+      const coast=1-sstep(0,.07,tt),D=fbm(uw*5+9,vw*2.5+4,5,4,sd+77),hot=sstep(.52,.64,D);
+      I=clamp((LG.cw*coast*(.15+.85*sstep(.36,.56,D))+(1-LG.cw*.5)*hot*(1-.4*coast))*(1-sstep(.74,.84,lat)),0,1);
+      I=hash(o+sd*13+7)<I*1.25?I:I*.15;
+    }
+    ld[o]=LG.tint[0]*I;ld[o+1]=LG.tint[1]*I;ld[o+2]=LG.tint[2]*I;ld[o+3]=255;
   });
+  lg.putImageData(lid,0,0);b.lights=dbl(lc);
   b.tex=dbl(c);
   const cl=yield* pix(256,128,(u,v,d,o)=>{
     const uw=u+(vn(u*4+3,v*2,4,sd+141)-.5)*.14,vw=v+(vn(u*4+2,v*2+1,4,sd+151)-.5)*.12,n=fbm(uw*6+7,vw*3,6,5,sd+9),m=fbm(uw*2+1,vw*1.3,2,3,sd+70),a=clamp((n-.575+.1*(m-.5))*3.6,0,1)*.85;
@@ -541,11 +552,15 @@ function* genBarren(b){
   const r=mulberry32(b.seed+6),sd=Math.floor(r()*200),hue=14+Math.floor(r()*40),lava=!!b.o.lava;
   const lut=mkLut(lava?[[0,24,18,16],[.5,70,52,44],[1,120,96,82]]:[[0,52,44,40],[.5,128,110,96],[1,190,172,150]]);
   const tint=lava?[1,.9,.85]:[1+(hue-30)/220,1,1-(hue-30)/260];
+  const lc=document.createElement('canvas');lc.width=512;lc.height=256;const lg=lc.getContext('2d'),lid=lg.createImageData(512,256),ld=lid.data,lt=r()<.35?[190,225,255]:[255,214,150];
   const c=yield* pix(512,256,(u,v,d,o)=>{
     const uw=u+(vn(u*4,v*2,4,sd+101)-.5)*.14,vw=v+(vn(u*4+1,v*2+2,4,sd+131)-.5)*.12,h=fbm(uw*6,vw*3,6,6,sd),mare=sstep(.42,.55,fbm(uw*3+5,vw*1.5,3,3,sd+4)),i=(clamp(h*(1-.3*mare)+.05,0,1)*255|0)*3;
     let R=lut[i]*tint[0],G=lut[i+1]*tint[1],B=lut[i+2]*tint[2];
     if(lava){const rd=Math.abs(fbm(u*9+2,v*4.5,9,4,sd+9)-.5),k=clamp(1-rd/.028,0,1);R+=k*255;G+=k*120;B+=k*20}
     put(d,o,R,G,B);
+    let I=0;   /* 야간 조명: 거주 돔이 모인 몇몇 지역 (용암 행성 제외) */
+    if(!lava&&Math.abs(v-.5)*2<.8){const D=fbm(uw*6+13,vw*3+2,6,4,sd+88);I=sstep(.62,.72,D)*.9;I=hash(o+sd*5+3)<I*1.1?I:I*.12}
+    ld[o]=lt[0]*I;ld[o+1]=lt[1]*I;ld[o+2]=lt[2]*I;ld[o+3]=255;
   },(g)=>{
     for(let i=0;i<110;i++){
       const cxp=r()*512,cyp=r()*256,rad=2+Math.pow(r(),2.4)*22;
@@ -557,6 +572,7 @@ function* genBarren(b){
       }
     }
   });
+  lg.putImageData(lid,0,0);if(!lava)b.lights=dbl(lc);
   b.tex=dbl(c);b.ready=true;
 }
 /* 가스 행성 */
@@ -716,7 +732,8 @@ function* genOring(b){
   const cB=mk(),cF=mk(),gB=cB.getContext('2d'),gF=cF.getContext('2d');
   const N=240,HULL=[[160,168,184],[188,176,160],[140,162,180]][Math.floor(r()*3)].map(x=>x*ARTK),ACC=[[255,214,140],[170,225,255],[190,255,200]][Math.floor(r()*3)];
   const P=(rad,y,th)=>{const x=rad*Math.cos(th),z=rad*Math.sin(th);return[W2/2+x*ORU,H2/2+(z*sn-y*cs)*ORU]};
-  const lit=(nx,ny,nz)=>{const vy=ny*cs-nz*sn,vz=ny*sn+nz*cs;return .3+.7*Math.abs(nx*LDIR[0]+vy*LDIR[1]+vz*LDIR[2])};
+  const LV=bodyLight(b).L,cr=Math.cos(b.orRoll),sr=Math.sin(b.orRoll),LD=[LV[0]*cr-LV[1]*sr,LV[0]*sr+LV[1]*cr,LV[2]];   // 궤도환 이미지(회전 전) 기준의 빛 방향
+  const lit=(nx,ny,nz)=>{const vy=ny*cs-nz*sn,vz=ny*sn+nz*cs;return .3+.7*Math.abs(nx*LD[0]+vy*LD[1]+vz*LD[2])};
   const poly=(g,pts,col,I,ln)=>{g.fillStyle=`rgb(${col[0]*I|0},${col[1]*I|0},${col[2]*I|0})`;g.strokeStyle=g.fillStyle;g.lineWidth=.8;g.beginPath();pts.forEach((q,i)=>i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]));g.closePath();g.fill();g.stroke()};
   const rin=ORR-ORW/2,rout=ORR+ORW/2;
   for(let i=0;i<N;i++){
@@ -772,7 +789,7 @@ function drawElev(b,x,y,r,t){
   // 승강 캐빈
   for(let k=0;k<4;k++){const f=((t*.035+k/4)%1),px=x0+(x1-x0)*f,py=y0+(y1-y0)*f;glowDisc(px,py,0,r*.07,'255,210,140',.9,0);cx.fillStyle='rgba(255,250,235,.95)';cx.fillRect(px-r*.012,py-r*.012,r*.024,r*.024)}
   cx.restore();
-  drawStation(b.est,{x:x1,y:y1,z:0},r*1.7,t,a);
+  drawStation(b.est,{x:x1,y:y1,z:0},r*1.7,t,a,bodyLight(b).L);
 }
 /* 기계(행성도시) 행성 */
 function* genMachine(b){
@@ -903,7 +920,8 @@ function stationPos(b,x,y,r,t){
   const a=t*.27+b.seed*.37,rho=r*(b.ring?2.3:1.62);
   return{x:x+Math.cos(a)*rho,y:y+Math.sin(a)*rho*.3-rho*.04,z:Math.sin(a)};
 }
-function drawStation(st,sp,r,t,al){   // al: 케이블 방향(화면 각도). 주면 정팔면체의 위·아래 꼭짓점 축이 케이블 연장선에 놓인다
+function drawStation(st,sp,r,t,al,Lv){
+  Lv=Lv||LDIR;   // al: 케이블 방향(화면 각도). 주면 정팔면체의 위·아래 꼭짓점 축이 케이블 연장선에 놓인다
   const s=r*st.size*(1+.32*sp.z),F=st.F;   // 행성 뒤(z<0)로 돌아가면 멀어져서 작아진다
   let M;
   if(al!=null){
@@ -924,7 +942,7 @@ function drawStation(st,sp,r,t,al){   // al: 케이블 방향(화면 각도). �
     const P=o.P,f=o.f;
     const ux=P[1][0]-P[0][0],uy=P[1][1]-P[0][1],uz=P[1][2]-P[0][2],vx=P[P.length-1][0]-P[0][0],vy=P[P.length-1][1]-P[0][1],vz=P[P.length-1][2]-P[0][2];
     let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;const nl=Math.hypot(nx,ny,nz)||1;
-    const lam=Math.abs((nx*LDIR[0]+ny*LDIR[1]+nz*LDIR[2])/nl),I=.2+.8*lam+(f.k===1?Math.pow(lam,10)*.5:0);
+    const lam=Math.abs((nx*Lv[0]+ny*Lv[1]+nz*Lv[2])/nl),I=.2+.8*lam+(f.k===1?Math.pow(lam,10)*.5:0);
     cx.fillStyle=`rgb(${f.c[0]*I*ARTK|0},${f.c[1]*I*ARTK|0},${f.c[2]*I*ARTK|0})`;
     cx.beginPath();P.forEach((q,i)=>{const px=sp.x+q[0]*s,py=sp.y-q[1]*s;i?cx.lineTo(px,py):cx.moveTo(px,py)});cx.closePath();cx.fill();
     cx.strokeStyle='rgba(6,10,16,.5)';cx.lineWidth=lw;cx.stroke();
@@ -1317,8 +1335,26 @@ function atmosphere(x,y,r,rgb,k){
   cx.beginPath();cx.arc(x,y,r,0,6.2832);cx.clip();cx.fillStyle=g2;cx.fillRect(x-r,y-r,2*r,2*r);
   cx.restore();
 }
-function terminator(x,y,r,dark){
-  const g=cx.createRadialGradient(x-r*.42,y-r*.42,r*.12,x-r*.2,y-r*.2,r*1.72);
+/* 행성마다 정해지는 빛 방향·위상. 어두운 부분 0~50%. 고리·궤도환이 있으면 그 면과 나란한 방향, 엘리베이터는 케이블 방향.
+   L은 화면 기준(x 오른쪽, y 위, z 관람자 쪽) 단위 벡터이며 L.z=1-2×(어두운 비율). */
+function bodyLight(b){
+  if(b.lt)return b.lt;
+  const r=mulberry32(b.seed+77),dark=r()*.5,lz=1-2*dark,sg=r()<.5?-1:1,s=Math.sqrt(Math.max(0,1-lz*lz));
+  let L;
+  const plane=(T,f)=>{   // 평면 기저: e1(화면 안), e2(깊이 성분 c). 평면과 나란한 방향 = cosψ·e1 + sinψ·e2
+    const c=Math.sqrt(1-f*f),e1=[Math.cos(T),-Math.sin(T),0],e2=[-f*Math.sin(T),-f*Math.cos(T),c],sp=Math.min(1,lz/c),cp=sg*Math.sqrt(1-sp*sp);
+    return[cp*e1[0]+sp*e2[0],cp*e1[1]+sp*e2[1],cp*e1[2]+sp*e2[2]];
+  };
+  if(b.o&&b.o.oring)L=plane(b.orRoll,Math.sin(ORE));
+  else if(b.ring)L=plane(b.ring.tilt,b.ring.flat);
+  else if(b.o&&b.o.elev){const a=b.elevA;L=[sg*Math.cos(a)*s,-sg*Math.sin(a)*s,lz]}
+  else{const ph=r()*6.2832;L=[Math.cos(ph)*s,Math.sin(ph)*s,lz]}
+  const l=Math.hypot(...L)||1;L=L.map(v=>v/l);
+  return b.lt={L,dark:(1-L[2])/2};
+}
+function terminator(x,y,r,dark,L){   // 2D 대체 경로: 빛 방향·위상에 따라 그라디언트 중심을 옮긴다
+  L=L||[-.55,.55,.62];const nl=Math.hypot(L[0],L[1])||1,dx=L[0]/nl,dy=-L[1]/nl,off=r*(.1+1.3*(1-L[2]));
+  const g=cx.createRadialGradient(x+dx*off,y+dy*off,r*.12,x+dx*off*.476,y+dy*off*.476,r*1.72);
   g.addColorStop(0,'rgba(255,255,255,.12)');g.addColorStop(.42,`rgba(0,0,0,${.1*dark})`);g.addColorStop(1,`rgba(0,0,0,${Math.min(.95,.86*dark)})`);
   cx.fillStyle=g;circPath(x,y,r);cx.fill();
 }
@@ -1334,7 +1370,9 @@ function drawPlanet(b,x,y,r,t){
   if(OR)r*=.66;else if(EL)r*=.6;else if(RN&&ST)r*=.58;else if(RN)r*=.7;else if(ST)r*=.68;
   if(!b.ready){placeholder(b,x,y,r);return}
   const rot=t*(b.kind==='gas'?.018:.012)+b.seed*.0013;
-  let sp=null;if(ST){sp=stationPos(b,x,y,r,t);if(sp.z<0)drawStation(b.st,sp,r,t)}
+  const LT=bodyLight(b).L,SAT=(b.kind==='earth'||b.kind==='machine')&&!OR;
+  if(SAT)drawSats(b,x,y,r,t,false);   // 위성 불빛: 고리·정거장·궤도환보다 먼저 그려서 그것들이 가려지지 않게 한다
+  let sp=null;if(ST){sp=stationPos(b,x,y,r,t);if(sp.z<0)drawStation(b.st,sp,r,t,null,LT)}
   if(RN)drawRing(b,x,y,r,false);
   if(OR)drawOring(b,x,y,r,false,t);
   if(!glPlanetBody(b,x,y,r,rot)){
@@ -1343,26 +1381,46 @@ function drawPlanet(b,x,y,r,t){
   if(b.clouds)sphereTex(b.clouds,x,y,r*1.02,rot*1.4+.2,.78);
   cx.restore();
   if(b.kind==='city'){
-    terminator(x,y,r,1.05);
+    terminator(x,y,r,1.05,LT);
     cx.save();circPath(x,y,r);cx.clip();cx.translate(x,y);cx.rotate(b.tilt);cx.translate(-x,-y);
     sphereTex(b.lights,x,y,r*1.02,rot,.9,'lighter');cx.restore();
     const g=cx.createRadialGradient(x-r*.55,y-r*.5,0,x-r*.55,y-r*.5,r*.9);g.addColorStop(0,'rgba(255,238,215,.3)');g.addColorStop(.7,'rgba(255,238,215,.04)');g.addColorStop(1,'rgba(255,238,215,0)');
     cx.fillStyle=g;circPath(x,y,r);cx.fill();
     atmosphere(x,y,r,'255,170,90',.7);
   }else if(b.kind==='machine'){
-    terminator(x,y,r,.95);
+    terminator(x,y,r,.95,LT);
     cx.save();circPath(x,y,r);cx.clip();cx.translate(x,y);cx.rotate(b.tilt);cx.translate(-x,-y);
     sphereTex(b.lights,x,y,r*1.02,rot,.8,'lighter');cx.restore();
     atmosphere(x,y,r,'255,150,70',.4);
   }else{
-    terminator(x,y,r,b.kind==='barren'?1.05:1);
+    terminator(x,y,r,b.kind==='barren'?1.05:1,LT);
     atmosphere(x,y,r,b.kind==='earth'?'110,170,255':b.kind==='gas'?([ '255,210,150','150,190,255','150,230,220','255,170,220','255,190,120'][b.gp]):'255,200,170',b.kind==='barren'?(b.o.lava?.5:.12):.62);
   }
   }
+  if(SAT)drawSats(b,x,y,r,t,true);
   if(RN)drawRing(b,x,y,r,true);
   if(OR)drawOring(b,x,y,r,true,t);
   if(EL)drawElev(b,x,y,r,t);
-  if(sp&&sp.z>=0)drawStation(b.st,sp,r,t);
+  if(sp&&sp.z>=0)drawStation(b.st,sp,r,t,null,LT);
+}
+
+/* 위성 궤도의 빛 알갱이 (지구형·기계 행성). 디테일 없이 점으로만 */
+function drawSats(b,x,y,r,t,front){
+  if(!b.sat){const q=mulberry32(b.seed+211);b.sat=Array.from({length:30+Math.floor(q()*14)},()=>({R:1.12+.55*q(),inc:(q()-.5)*2.2,nd:q()*6.2832,th:q()*6.2832,w:(.1+.08*q())*(q()<.5?-1:1),ph:q()*6.2832}))}
+  const s=Math.max(1,r*.011);
+  cx.save();cx.globalCompositeOperation='lighter';
+  for(let pass=0;pass<2;pass++){
+    cx.fillStyle=pass?'rgba(255,244,214,.95)':'rgba(255,238,200,.5)';cx.beginPath();let n=0;
+    for(const q of b.sat){
+      const th=q.th+q.w*t/Math.pow(q.R,1.5),a=q.R*Math.cos(th),c=q.R*Math.sin(th),y3=c*Math.cos(q.inc),z=c*Math.sin(q.inc),cn=Math.cos(q.nd),sn=Math.sin(q.nd),X=a*cn-y3*sn,Y=a*sn+y3*cn;
+      if((z>=0)!==front)continue;
+      if(z<0&&X*X+Y*Y<1)continue;   // 행성 뒤로 숨는다
+      const tw=.65+.35*Math.sin(t*2.3+q.ph);if((tw>.8)!==!!pass)continue;
+      cx.rect(x+X*r-s/2,y-Y*r-s/2,s,s);n++;
+    }
+    if(n)cx.fill();
+  }
+  cx.restore();
 }
 
 /* 항성 */
@@ -1433,6 +1491,7 @@ function drawStar(b,x,y,r,t){
   }
   if(!SUNTEX[sub]&&sub!=='W'){placeholder(b,x,y,r);return}
   drawSun(sub,x,y,r*.8,t,b.seed);
+  if(hasSwarm(b))drawSwarm(b,x,y,r*.8*SUNSPEC[sub].k,t);
 }
 /* 블랙홀 (중력 렌즈 강착원반) */
 function drawHole(b,x,y,r,t){
@@ -2401,10 +2460,10 @@ void main(){
   }
   vec4 c=texture2D(uC,vec2((vT.x-.5+uRC)*.5,vT.y))*uHC;
   col=mix(col,c.rgb,c.a*.78);
-  float sh=smoothstep(-.4,.75,dot(N,uL));
+  float nd=dot(N,uL),sh=smoothstep(-.22,.58,nd);
   col*=mix(uLo,1.08,sh);
-  if(uHL>.5){vec4 l=texture2D(uLt,vec2((vT.x-.5+uRL)*.5,vT.y));col+=l.rgb*l.a*uLA;}
-  if(uGlow>.5){float d=length(N.xy-vec2(-.55,.5));col=mix(col,vec3(1.,.93,.84),.3*(1.-smoothstep(0.,.9,d)));}
+  if(uHL>.5){vec4 l=texture2D(uLt,vec2((vT.x-.5+uRL)*.5,vT.y));col+=l.rgb*l.a*uLA*(1.-smoothstep(-.1,.2,nd));}   /* 야간 조명은 낮 영역에서는 보이지 않는다 */
+  if(uGlow>.5){float d=length(N.xy-uL.xy*.8);col=mix(col,vec3(1.,.93,.84),.3*(1.-smoothstep(0.,.9,d))*smoothstep(-.1,.4,nd));}
   float rim=pow(1.-max(N.z,0.),2.4);
   col+=uA*rim*(.2+.8*sh)*.85;
   gl_FragColor=vec4(col,1.);
@@ -2451,6 +2510,22 @@ void main(){
   float a=clamp(max(col.r,max(col.g,col.b)),0.,1.);a=max(a,sh);
   gl_FragColor=vec4(min(col,vec3(1.)),a);
 }`);
+    const wp=pg(`attribute vec4 aA;attribute float aB;uniform float uT;uniform vec3 uPl[6];uniform vec2 uC;uniform vec4 uRect;uniform float uRR;uniform float uPs;varying float vS;varying float vG;
+void main(){
+  vec3 pl=uPl[int(aA.w)];float R=aA.x;float th=aA.y+uT*pl.z*.5/(R*sqrt(R));float inc=pl.x+aA.z;
+  float ct=cos(th),st=sin(th),ci=cos(inc),si=sin(inc),cO=cos(pl.y),sO=sin(pl.y);
+  vec3 P=R*vec3(cO*ct-sO*ci*st,sO*ct+cO*ci*st,si*st);
+  if(P.z<0.&&length(P.xy)<1.){gl_Position=vec4(2.,2.,2.,1.);gl_PointSize=0.;vS=0.;vG=0.;return;}   /* 항성 뒤로 숨는 알갱이 */
+  vec2 pc=uC+vec2(P.x,-P.y)*uRR;
+  gl_Position=vec4((pc.x-uRect.x)/(uRect.z-uRect.x)*2.-1.,1.-(pc.y-uRect.y)/(uRect.w-uRect.y)*2.,0.,1.);
+  float lit=.5-.5*P.z/length(P);   /* 항성 반대쪽(뒤)에 있으면 빛 받은 면이 보이고, 앞쪽은 어두운 면이 보인다 */
+  vS=.14+.8*lit;vG=.72+.28*aB;gl_PointSize=max(1.5,uPs*(.55+.9*aB));
+}`,
+`varying float vS;varying float vG;
+void main(){float a=1.-smoothstep(.28,.5,length(gl_PointCoord-.5));float g=vS*vG;gl_FragColor=vec4(vec3(g)*vec3(1.,.985,.96)*a*.92,a*.92);}`);
+    const SWN=36000,sw=new Float32Array(SWN*5);
+    for(let i=0;i<SWN;i++){const k=Math.floor(Math.random()*6);sw[i*5]=1.22+.17*k+.15*(Math.random()+Math.random()-1);sw[i*5+1]=Math.random()*6.2832;sw[i*5+2]=(Math.random()-.5)*.07;sw[i*5+3]=k;sw[i*5+4]=Math.random()}
+    const wb=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,wb);g.bufferData(g.ARRAY_BUFFER,sw,g.STATIC_DRAW);
     // 구 메시
     const SEG=48,RING=24,vp=[],ix=[];
     for(let j=0;j<=RING;j++){const lat=Math.PI/2-j/RING*Math.PI,cl=Math.cos(lat),sl=Math.sin(lat);
@@ -2460,7 +2535,7 @@ void main(){
     const ib=g.createBuffer();g.bindBuffer(g.ELEMENT_ARRAY_BUFFER,ib);g.bufferData(g.ELEMENT_ARRAY_BUFFER,new Uint16Array(ix),g.STATIC_DRAW);
     const qb=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,qb);g.bufferData(g.ARRAY_BUFFER,new Float32Array([-1.16,-1.16,1.16,-1.16,-1.16,1.16,1.16,1.16]),g.STATIC_DRAW);
     const U=(p,n)=>g.getUniformLocation(p,n);
-    Object.assign(GLX,{c,g,sp,hp,bp,vb,ib,qb,n:ix.length,tris:ix.length/3,bu:{T:g.getUniformLocation(bp,'uT'),S:g.getUniformLocation(bp,'uS'),aQ:g.getAttribLocation(bp,'aQ')},
+    Object.assign(GLX,{c,g,sp,hp,bp,wp,wb,SWN,wu:{T:g.getUniformLocation(wp,'uT'),Pl:g.getUniformLocation(wp,'uPl'),C:g.getUniformLocation(wp,'uC'),Rect:g.getUniformLocation(wp,'uRect'),RR:g.getUniformLocation(wp,'uRR'),Ps:g.getUniformLocation(wp,'uPs'),aA:g.getAttribLocation(wp,'aA'),aB:g.getAttribLocation(wp,'aB')},vb,ib,qb,n:ix.length,tris:ix.length/3,bu:{T:g.getUniformLocation(bp,'uT'),S:g.getUniformLocation(bp,'uS'),aQ:g.getAttribLocation(bp,'aQ')},
       su:{M:U(sp,'uM'),D:U(sp,'uD'),C:U(sp,'uC'),Lt:U(sp,'uLt'),RD:U(sp,'uRD'),RC:U(sp,'uRC'),RL:U(sp,'uRL'),HC:U(sp,'uHC'),HL:U(sp,'uHL'),LA:U(sp,'uLA'),Lo:U(sp,'uLo'),Mode:U(sp,'uMode'),K1:U(sp,'uK1'),K2:U(sp,'uK2'),Glow:U(sp,'uGlow'),L:U(sp,'uL'),A:U(sp,'uA'),aP:g.getAttribLocation(sp,'aP'),aT:g.getAttribLocation(sp,'aT')},
       hu:{A:U(hp,'uA'),K:U(hp,'uK'),aQ:g.getAttribLocation(hp,'aQ')}});
     const e0=g.createTexture();g.bindTexture(g.TEXTURE_2D,e0);g.texImage2D(g.TEXTURE_2D,0,g.RGBA,1,1,0,g.RGBA,g.UNSIGNED_BYTE,new Uint8Array([0,0,0,0]));GLX.empty=e0;
@@ -2500,7 +2575,7 @@ function glSphere(o){
   if(o.halo){   // 대기 후광
     g.disable(g.DEPTH_TEST);g.enable(g.BLEND);g.blendFunc(g.ONE,g.ONE_MINUS_SRC_ALPHA);
     g.useProgram(P.hp);g.bindBuffer(g.ARRAY_BUFFER,P.qb);g.enableVertexAttribArray(P.hu.aQ);g.vertexAttribPointer(P.hu.aQ,2,g.FLOAT,false,0,0);
-    g.uniform3f(P.hu.A,A[0],A[1],A[2]);g.uniform1f(P.hu.K,o.k);g.drawArrays(g.TRIANGLE_STRIP,0,4);g.disableVertexAttribArray(P.hu.aQ);
+    g.uniform3f(P.hu.A,A[0],A[1],A[2]);g.uniform1f(P.hu.K,o.k*(.7+.3*((o.L?o.L[2]:.62))));g.drawArrays(g.TRIANGLE_STRIP,0,4);g.disableVertexAttribArray(P.hu.aQ);
   }
   g.disable(g.BLEND);g.enable(g.DEPTH_TEST);g.depthFunc(g.LESS);
   g.useProgram(P.sp);g.bindBuffer(g.ARRAY_BUFFER,P.vb);g.bindBuffer(g.ELEMENT_ARRAY_BUFFER,P.ib);
@@ -2510,7 +2585,7 @@ function glSphere(o){
   g.uniform1f(u.RD,fr(o.rD));g.uniform1f(u.RC,fr(o.rC||0));g.uniform1f(u.RL,fr(o.rL||0));
   g.uniform1f(u.HC,cT?1:0);g.uniform1f(u.HL,lT?1:0);g.uniform1f(u.LA,o.lA||0);g.uniform1f(u.Lo,o.lo==null?.08:o.lo);
   g.uniform1f(u.Mode,o.mode||0);g.uniform1f(u.K1,o.k1||0);g.uniform1f(u.K2,o.k2||0);g.uniform1f(u.Glow,o.glow?1:0);
-  g.uniform3f(u.L,-.55,.55,.62);g.uniform3f(u.A,A[0],A[1],A[2]);
+  const LL=o.L||[-.55,.55,.62];g.uniform3f(u.L,LL[0],LL[1],LL[2]);g.uniform3f(u.A,A[0],A[1],A[2]);
   g.activeTexture(g.TEXTURE0);g.bindTexture(g.TEXTURE_2D,dayT);g.uniform1i(u.D,0);
   g.activeTexture(g.TEXTURE1);g.bindTexture(g.TEXTURE_2D,cT||P.empty);g.uniform1i(u.C,1);
   g.activeTexture(g.TEXTURE2);g.bindTexture(g.TEXTURE_2D,lT||P.empty);g.uniform1i(u.Lt,2);
@@ -2531,6 +2606,37 @@ function glHoleBody(b,x,y,r,t){   // 블랙홀: 강착원반·렌즈 아치를 �
     return true;
   }catch(e){glFail(e);return false}
 }
+/* 다이슨 스웜: 항성 둘레를 도는 회색 알갱이 수만 개. 위치는 정점 셰이더가 계산하므로 CPU 부담이 거의 없다 */
+function hasSwarm(b){if(b.swm!=null)return b.swm;const q=mulberry32(b.seed+301);b.swm=(['Y','K','R','B'].indexOf(b.sub)>=0&&q()<.4)?{dens:.55+.45*q(),pl:Array.from({length:6},()=>[(q()-.5)*1.7,q()*6.2832,(.7+.6*q())*(q()<.5?-1:1)])}:0;return b.swm}
+function glSwarm(b,x,y,rr,t){
+  if(!CFG.gl||GLX.bad)return false;
+  try{
+    if(!glSetup())return false;
+    const g=GLX.g,P=GLX,sw=hasSwarm(b),ext=2.6*rr,x0=Math.max(0,x-ext),x1=Math.min(W,x+ext),y0=Math.max(0,y-ext),y1=Math.min(H,y+ext);
+    if(x1-x0<2||y1-y0<2)return true;
+    const sf=Math.min(1,P.S/(Math.max(x1-x0,y1-y0)*dpr)),wv=Math.max(1,Math.floor((x1-x0)*dpr*sf)),hv=Math.max(1,Math.floor((y1-y0)*dpr*sf));P.D=Math.max(wv,hv);
+    g.viewport(0,0,wv,hv);g.enable(g.SCISSOR_TEST);g.scissor(0,0,Math.min(P.S,wv+2),Math.min(P.S,hv+2));g.clearColor(0,0,0,0);g.clear(g.COLOR_BUFFER_BIT);g.disable(g.SCISSOR_TEST);
+    g.disable(g.DEPTH_TEST);g.enable(g.BLEND);g.blendFunc(g.ONE,g.ONE_MINUS_SRC_ALPHA);
+    g.useProgram(P.wp);const u=P.wu;g.bindBuffer(g.ARRAY_BUFFER,P.wb);
+    g.enableVertexAttribArray(u.aA);g.vertexAttribPointer(u.aA,4,g.FLOAT,false,20,0);g.enableVertexAttribArray(u.aB);g.vertexAttribPointer(u.aB,1,g.FLOAT,false,20,16);
+    g.uniform1f(u.T,t);g.uniform3fv(u.Pl,new Float32Array(sw.pl.flat()));g.uniform2f(u.C,x,y);g.uniform4f(u.Rect,x0,y0,x1,y1);g.uniform1f(u.RR,rr);g.uniform1f(u.Ps,Math.max(1.5,rr*.011*dpr*sf));
+    g.drawArrays(g.POINTS,0,Math.floor(P.SWN*sw.dens));g.disableVertexAttribArray(u.aA);g.disableVertexAttribArray(u.aB);g.disable(g.BLEND);
+    cx.drawImage(P.c,0,P.S-hv,wv,hv,x0,y0,x1-x0,y1-y0);
+    return true;
+  }catch(e){glFail(e);return false}
+}
+function swarm2D(b,x,y,rr,t){   // WebGL이 없을 때: 1,000개 정도만 그린다
+  const sw=hasSwarm(b);if(!b.swD){const q=mulberry32(b.seed+302);b.swD=Array.from({length:1000},()=>{const k=Math.floor(q()*6);return{R:1.22+.17*k+.15*(q()+q()-1),th:q()*6.2832,j:(q()-.5)*.07,k,rn:q()}})}
+  const dk=new Path2D(),lt=new Path2D(),sz=Math.max(1,rr*.011);
+  for(const p of b.swD){
+    const pl=sw.pl[p.k],th=p.th+t*pl[2]*.5/Math.pow(p.R,1.5),inc=pl[0]+p.j,ct=Math.cos(th),st=Math.sin(th),ci=Math.cos(inc),si=Math.sin(inc),cO=Math.cos(pl[1]),sO=Math.sin(pl[1]);
+    const X=p.R*(cO*ct-sO*ci*st),Y=p.R*(sO*ct+cO*ci*st),Z=p.R*si*st;
+    if(Z<0&&X*X+Y*Y<1)continue;
+    (Z<0?lt:dk).rect(x+X*rr-sz/2,y-Y*rr-sz/2,sz,sz);
+  }
+  cx.save();cx.fillStyle='rgba(60,60,64,.9)';cx.fill(dk);cx.fillStyle='rgba(185,184,180,.9)';cx.fill(lt);cx.restore();
+}
+function drawSwarm(b,x,y,rr,t){if(!glSwarm(b,x,y,rr,t))swarm2D(b,x,y,rr,t)}
 function glFail(e){GLX.bad=1;GLX.info=L('WebGL 오류로 2D로 전환: ','WebGL error, using 2D: ')+(e&&e.message||e)}
 const GLATM={earth:[[110,170,255],.62,1,0],barren:[[255,200,170],.12,1.05,0],city:[[255,170,90],.7,1.05,0],machine:[[255,150,70],.4,.95,0]};
 const GASATM=[[255,210,150],[150,190,255],[150,230,220],[255,170,220],[255,190,120]];
@@ -2539,8 +2645,8 @@ function glPlanetBody(b,x,y,r,rot){   // 행성의 구 부분(표면·구름·�
   try{
     let a=GLATM[b.kind];if(b.kind==='gas')a=[GASATM[b.gp],.62,1,0];if(!a)return false;
     let k=a[1];if(b.kind==='barren')k=b.o.lava?.5:.12;
-    const lit=b.kind==='city'||b.kind==='machine';
-    return glSphere({x,y,r,tilt:b.tilt,day:b.tex,cloud:b.clouds,lights:lit?b.lights:null,rD:rot,rC:rot*1.4+.2,rL:rot,lA:b.kind==='city'?.9:.8,
+    const lt=bodyLight(b);
+    return glSphere({x,y,r,L:lt.L,tilt:b.tilt,day:b.tex,cloud:b.clouds,lights:b.lights,rD:rot,rC:rot*1.4+.2,rL:rot,lA:b.kind==='city'?.9:b.kind==='machine'?.8:.85,
       lo:.08-(a[2]-1)*.6,glow:b.kind==='city',atm:a[0].map(v=>v/255),k,halo:true});
   }catch(e){glFail(e);return false}
 }
