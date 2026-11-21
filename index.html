@@ -655,11 +655,11 @@ function* genEarth(b){
 function* genBarren(b){
   const r=mulberry32(b.seed+6),sd=Math.floor(r()*200),hue=14+Math.floor(r()*40),lava=!!b.o.lava;
   const lut=mkLut(lava?[[0,24,18,16],[.5,70,52,44],[1,120,96,82]]:[[0,52,44,40],[.5,128,110,96],[1,190,172,150]]);
-  const tint=lava?[1,.9,.85]:[1+(hue-30)/220,1,1-(hue-30)/260];
+  const tint=lava?[1,.9,.85]:[1+(hue-30)/220,1,1-(hue-30)/260],lm=lava?new Uint8Array(512*256):null;
     const c=yield* pix(512,256,(u,v,d,o)=>{
     const uw=u+(vn(u*4,v*2,4,sd+101)-.5)*.14,vw=v+(vn(u*4+1,v*2+2,4,sd+131)-.5)*.12,h=fbm(uw*6,vw*3,6,6,sd),mare=sstep(.42,.55,fbm(uw*3+5,vw*1.5,3,3,sd+4)),i=(clamp(h*(1-.3*mare)+.05,0,1)*255|0)*3;
     let R=lut[i]*tint[0],G=lut[i+1]*tint[1],B=lut[i+2]*tint[2];
-    if(lava){const rd=Math.abs(fbm(u*9+2,v*4.5,9,4,sd+9)-.5),k=clamp(1-rd/.028,0,1);R+=k*255;G+=k*120;B+=k*20}
+    if(lava){const rd=Math.abs(fbm(u*9+2,v*4.5,9,4,sd+9)-.5),k=clamp(1-rd/.028,0,1);R+=k*255;G+=k*34;B+=k*3;lm[(o>>2)]=Math.min(255,k*255+Math.pow(clamp(1-rd/.06,0,1),2)*70)}   /* 붉은 용암. lm은 발광(야간면에도 보임)용 마스크 */
     put(d,o,R,G,B);
   },(g)=>{
     /* 구 메시의 세로 좌표는 sin(위도)에 비례(가로는 경도에 비례)하므로 지도 위의 원은 구에서 타원이 된다.
@@ -676,6 +676,11 @@ function* genBarren(b){
     }
   });
   b.tex=dbl(c);
+  if(lava){   // 용암은 스스로 빛난다: 균열 마스크를 발광 텍스처로 만들어 어두운 면에서도 보이게 한다(always)
+    const lc=document.createElement('canvas');lc.width=512;lc.height=256;const lg=lc.getContext('2d'),li=lg.createImageData(512,256),ld=li.data;
+    for(let i=0;i<512*256;i++){const m=lm[i];ld[i*4]=255;ld[i*4+1]=m>200?60:34;ld[i*4+2]=6;ld[i*4+3]=m}
+    lg.putImageData(li,0,0);b.lights=dbl(lc);b.lava=1;
+  }
   if(!lava){   // 야간 조명: 거주 돔 도시들(적은 수의 촘촘한 군집)과 그 사이를 잇는 터널 길
     const LA=(u,v)=>Math.abs(v-.5)*2<.78?1:-1,lr=mulberry32(b.seed+93);LA.m=.5;
     b.lights=dbl(yield* genLights(b,sd,LA,{salt:5,flat:1,nc:16+Math.floor(lr()*9),alpha:.95+.3*lr(),rmin:5,rmax:24,sep:50,d0:60,dm:1800,k:.6,gain:2.1,link:420,link2:.5,ed0:.05,ed1:.5,rural:0}));
@@ -1205,7 +1210,7 @@ function bodyDbg(b){
     yn(!!b.ring,'고리','ring');
     yn(!!b.st,'정거장'+(b.st?'('+L(STNAME[o.st][1],STNAME[o.st][0])+')':''),'station'+(b.st?'('+STNAME[o.st][0]+')':''));
     yn(!!o.oring,'궤도환','orbital ring');yn(!!o.elev,'엘리베이터','elevator');
-    yn(!!b.lights,'야간조명','night lights');
+    yn(!!b.lights&&!b.lava,'야간조명','night lights');
     if(b.kind==='barren'&&o.lava)it.push('● '+L('용암','lava'));
     try{it.push(L('어두운 면 ','dark ')+Math.round(bodyLight(b).dark*100)+'%')}catch(e){}
   }
@@ -1341,6 +1346,7 @@ function shipStep(dt,dn){
 }
 function curvK(){return clamp(S.curW*CURVE_GAIN/(FLY_K*Math.max(S.v,20)),-.12,.12)}   // 시선 방향 단위 길이당 도로의 굽이 (우회전 +)
 function drawShip(cx0,cy0,F0){S.ships.slice().sort((a,b)=>b.Z-a.Z).forEach(sh=>drawShip1(sh,cx0,cy0,F0))}   // 먼 우주선부터 그린다
+const dz=Z=>Z<1?Z:Math.pow(Z,1.35);   // 다른 우주선의 원근: 1보다 먼 곳은 거리^1.35로 나눠 멀수록 더 빨리 작아진다(1 이하는 그대로)
 function drawShip1(sh,cx0,cy0,F0){
   const m=sh.m,L=m.L,NEAR=.14;
   const hullOn=sh.Z>=NEAR+L*.5;
@@ -1349,8 +1355,8 @@ function drawShip1(sh,cx0,cy0,F0){
   const sn=Math.sin(sh.yaw),cs=Math.cos(sh.yaw),sr=Math.sin(sh.roll),cr=Math.cos(sh.roll);
   const tf=p=>{const x=p[0]*L,y=p[1]*L,z=p[2]*L,x1=x*cr-y*sr,y1=x*sr+y*cr;return[x1*cs+z*sn,y1,-x1*sn+z*cs]};   // 선체 → 카메라 방향(이동 전)
   const K=curvK()*.35,BZC=3;   // 휘는 정도는 줄이고, 먼 곳에서는 직선(소실점 방향)에 가까워지게 한다
-  const scr=(X,Y,Z)=>{Z=Math.max(NEAR,Z);X+=Z<BZC?.5*K*Z*Z:.5*K*BZC*BZC+K*BZC*(Z-BZC);return[cx0+X/Z*F0,cy0-Y/Z*F0,Z]};   // 굽은 도로를 따라 같은 쪽으로 휘어 보인다
-  if(hullOn&&Math.abs(sh.X/sh.Z*F0)>W*1.4+L/sh.Z*F0*2&&sh.same)return;
+  const scr=(X,Y,Z)=>{Z=Math.max(NEAR,Z);X+=Z<BZC?.5*K*Z*Z:.5*K*BZC*BZC+K*BZC*(Z-BZC);const Zd=dz(Z);return[cx0+X/Zd*F0,cy0-Y/Zd*F0,Zd]};   // 굽은 도로를 따라 같은 쪽으로 휘어 보인다
+  if(hullOn&&Math.abs(sh.X/dz(sh.Z)*F0)>W*1.4+L/dz(sh.Z)*F0*2&&sh.same)return;
   cx.save();cx.globalAlpha=a;
   const bx=-sn,bz=-cs,col=m.trail;
   // 후미의 빛줄기
@@ -1391,7 +1397,7 @@ function drawShip1(sh,cx0,cy0,F0){
     it.fs.push({f,R,z:gz,n:[nx,ny,nz]});
   }
   items.sort((p,q)=>q.d-p.d);
-  const big=L/sh.Z*F0>50;
+  const big=L/dz(sh.Z)*F0>50;
   cx.lineJoin='round';
   for(const it of items){
     it.fs.sort((p,q)=>((p.f.k>=3)-(q.f.k>=3))||(q.z-p.z));   // 얹힌 장식(창·줄무늬)은 같은 부품의 본체 면 다음에
@@ -1412,7 +1418,7 @@ function drawShip1(sh,cx0,cy0,F0){
   cx.globalCompositeOperation='lighter';
   for(const e of m.E){
     const q=tf([e.x,e.y,e.z]),ez=sh.Z+q[2];if(ez<NEAR)continue;
-    const p=scr(sh.X+q[0],sh.Y+q[1],ez),rr=Math.max(2,e.r*L/ez*F0*2.6);
+    const p=scr(sh.X+q[0],sh.Y+q[1],ez),rr=Math.max(2,e.r*L/dz(ez)*F0*2.6);
     const g=cx.createRadialGradient(p[0],p[1],0,p[0],p[1],rr);
     g.addColorStop(0,'rgba(255,255,255,.9)');g.addColorStop(.25,`rgba(${m.trail[0]},${m.trail[1]},${m.trail[2]},.55)`);g.addColorStop(1,`rgba(${m.trail[0]},${m.trail[1]},${m.trail[2]},0)`);
     cx.fillStyle=g;cx.fillRect(p[0]-rr,p[1]-rr,rr*2,rr*2);
@@ -1562,6 +1568,7 @@ function drawPlanet(b,x,y,r,t){
     atmosphere(x,y,r,'255,150,70',.4);
   }else{
     terminator(x,y,r,b.kind==='barren'?1.05:1,LT);
+    if(b.lava&&b.lights){cx.save();circPath(x,y,r);cx.clip();cx.translate(x,y);cx.rotate(b.tilt);cx.translate(-x,-y);sphereTex(b.lights,x,y,r*1.02,rot,.9,'lighter');cx.restore()}   // 용암 발광은 어두운 면에서도 보인다
     atmosphere(x,y,r,b.kind==='earth'?'110,170,255':b.kind==='gas'?([ '255,210,150','150,190,255','150,230,220','255,170,220','255,190,120'][b.gp]):'255,200,170',b.kind==='barren'?(b.o.lava?.5:.12):.62);
   }
   }
@@ -1575,7 +1582,7 @@ function drawPlanet(b,x,y,r,t){
 /* 위성 궤도의 빛 알갱이 (지구형·기계 행성). 디테일 없이 점으로만 */
 function drawSats(b,x,y,r,t,front){
   if(!b.sat){const q=mulberry32(b.seed+211);b.sat=Array.from({length:30+Math.floor(q()*14)},()=>({R:1.12+.55*q(),inc:(q()-.5)*2.2,nd:q()*6.2832,th:q()*6.2832,w:(.1+.08*q())*(q()<.5?-1:1),ph:q()*6.2832}))}
-  const s=Math.max(1.8,r*.018),hs=s*3.2,H=new Path2D(),D=new Path2D(),B=new Path2D();let n=0;
+  const s=Math.max(.75,r*.014)*Math.min(1,.55+r/160),hs=s*3.2,H=new Path2D(),D=new Path2D(),B=new Path2D();let n=0;
   for(const q of b.sat){
     const th=q.th+q.w*t/Math.pow(q.R,1.5),a=q.R*Math.cos(th),c=q.R*Math.sin(th),y3=c*Math.cos(q.inc),z=c*Math.sin(q.inc),cn=Math.cos(q.nd),sn=Math.sin(q.nd),X=a*cn-y3*sn,Y=a*sn+y3*cn;
     if((z>=0)!==front)continue;
@@ -2844,7 +2851,7 @@ function glPlanetBody(b,x,y,r,rot){   // 행성의 구 부분(표면·구름·�
     let a=GLATM[b.kind];if(b.kind==='gas')a=[GASATM[b.gp],.62,1,0];if(!a)return false;
     let k=a[1];if(b.kind==='barren')k=b.o.lava?.5:.12;
     const lt=bodyLight(b);
-    return glSphere({x,y,r,L:lt.L,tilt:b.tilt,day:b.tex,cloud:b.clouds,lights:b.lights,always:b.kind==='machine',rD:rot,rC:rot*1.4+.2,rL:rot,lA:b.kind==='city'?1:b.kind==='machine'?1:1.15,
+    return glSphere({x,y,r,L:lt.L,tilt:b.tilt,day:b.tex,cloud:b.clouds,lights:b.lights,always:b.kind==='machine'||!!b.lava,rD:rot,rC:rot*1.4+.2,rL:rot,lA:b.kind==='city'?1:b.kind==='machine'?1:b.lava?.95:1.15,
       lo:.02,glow:b.kind==='city',atm:a[0].map(v=>v/255),k,halo:true});
   }catch(e){glFail(e);return false}
 }
