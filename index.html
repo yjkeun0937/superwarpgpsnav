@@ -358,7 +358,7 @@ html[lang=en] #toast b{font-size:30px}
       <div id="bdList"></div>
     </div>
     <div class="cfgsec" data-en="LAB (EXPERIMENT)">실험 기능</div>
-    <label class="bitem"><input type="checkbox" id="labGl"><span data-en="3D earth-type planets (WebGL)">지구형 행성 3D 표시 (WebGL)</span></label>
+    <label class="bitem"><input type="checkbox" id="labGl"><span data-en="3D planets and stars (WebGL)">행성·항성 3D 표시 (WebGL)</span></label>
     <label class="bitem"><input type="checkbox" id="labOnly"><span data-en="Only earth-type planets appear (from next route)">지구형 행성만 등장 (다음 항로부터)</span></label>
     <label class="bitem"><input type="checkbox" id="labPerf"><span data-en="Show performance meter (tap it to reset)">성능 표시 (눌러서 초기화)</span></label>
     <p class="sm" id="labInfo" style="margin-top:6px"></p>
@@ -822,7 +822,7 @@ function* genBody(b){
   else b.ready=true;   // 블랙홀·펄서·퀘이사는 텍스처 없이 그린다
 }
 function queueBody(b){if(b.queued)return;b.queued=true;JOBS.push(genBody(b))}
-function disposeBody(b){if(b.glT)glFree(b);if(!b.queued)return;b.tex=b.clouds=b.lights=b.sp=b.orB=b.orF=null;b.ready=false;b.queued=false}
+function disposeBody(b){if(GLX.g)glFree(b);if(!b.queued)return;b.tex=b.clouds=b.lights=b.sp=b.orB=b.orF=null;b.ready=false;b.queued=false}
 let prepMs=null,prepIdx=-1;
 function prepBodies(){   // 앞으로 만날 천체 3개 텍스처를 미리 만들고, 지나간 것은 해제한다
   if(prepMs===S.maneuvers&&prepIdx===S.idx)return;prepMs=S.maneuvers;prepIdx=S.idx;
@@ -1328,20 +1328,14 @@ function drawRing(b,x,y,r,front){
 }
 const PERF={bodyNow:false,bodyMs:0};
 function drawPlanet(b,x,y,r,t){
-  PERF.bodyNow=true;const t0=performance.now();
-  let ok=false;
-  if(CFG.gl&&b.kind==='earth'&&b.ready&&!GLX.bad){try{ok=glPlanet(b,x,y,r,t)}catch(e){GLX.bad=1;GLX.info=L('WebGL 오류로 2D로 전환: ','WebGL error, using 2D: ')+(e&&e.message||e)}}
-  if(!ok)drawPlanet2D(b,x,y,r,t);
-  PERF.bodyMs=performance.now()-t0;
-}
-function drawPlanet2D(b,x,y,r,t){
-  const plain=!!CFG.glOnly&&b.kind==='earth',RN=plain?null:b.ring,ST=plain?null:b.st,OR=plain?false:b.o.oring,EL=plain?false:b.o.elev;   // 시험 모드의 지구형 행성은 고리·정거장 없이 행성만 그린다
+  const RN=b.ring,ST=b.st,OR=b.o.oring,EL=b.o.elev;
   if(OR)r*=.66;else if(EL)r*=.6;else if(RN&&ST)r*=.58;else if(RN)r*=.7;else if(ST)r*=.68;
   if(!b.ready){placeholder(b,x,y,r);return}
   const rot=t*(b.kind==='gas'?.018:.012)+b.seed*.0013;
   let sp=null;if(ST){sp=stationPos(b,x,y,r,t);if(sp.z<0)drawStation(b.st,sp,r,t)}
   if(RN)drawRing(b,x,y,r,false);
   if(OR)drawOring(b,x,y,r,false,t);
+  if(!glPlanetBody(b,x,y,r,rot)){
   cx.save();circPath(x,y,r);cx.clip();cx.translate(x,y);cx.rotate(b.tilt);cx.translate(-x,-y);
   sphereTex(b.tex,x,y,r*1.02,rot);
   if(b.clouds)sphereTex(b.clouds,x,y,r*1.02,rot*1.4+.2,.78);
@@ -1361,6 +1355,7 @@ function drawPlanet2D(b,x,y,r,t){
   }else{
     terminator(x,y,r,b.kind==='barren'?1.05:1);
     atmosphere(x,y,r,b.kind==='earth'?'110,170,255':b.kind==='gas'?([ '255,210,150','150,190,255','150,230,220','255,170,220','255,190,120'][b.gp]):'255,200,170',b.kind==='barren'?(b.o.lava?.5:.12):.62);
+  }
   }
   if(RN)drawRing(b,x,y,r,true);
   if(OR)drawOring(b,x,y,r,true,t);
@@ -1385,10 +1380,12 @@ function drawSun(sub,x,y,r,t,seed){
   cx.restore();
   if(sub==='W'){glowDisc(x,y,0,rr*1.3,'235,245,255',1,0);cx.fillStyle='#fff';circPath(x,y,rr);cx.fill()}
   else if(tx){
+    if(!glSunBody(sub,tx,x,y,rr,t*.006+seed*.01)){
     cx.save();circPath(x,y,rr);cx.clip();sphereTex(tx,x,y,rr,t*.006+seed*.01);
     const lg=cx.createRadialGradient(x,y,rr*.35,x,y,rr);lg.addColorStop(0,'rgba(0,0,0,0)');lg.addColorStop(.75,`rgba(0,0,0,${sub==='B'?.05:.16})`);lg.addColorStop(1,`rgba(0,0,0,${sub==='R'?.72:sub==='B'?.2:.55})`);
     cx.fillStyle=lg;cx.fillRect(x-rr,y-rr,2*rr,2*rr);
     cx.restore();
+    }
   }else{cx.fillStyle=`rgb(${g})`;circPath(x,y,rr);cx.fill()}
   // 홍염 / 플레어 스파이크
   cx.save();cx.globalCompositeOperation='lighter';cx.lineCap='round';
@@ -1542,7 +1539,7 @@ function drawAsteroid(b,x,y,r,t){
 }
 function drawBody(b,x,y,r,a){
   if(a<=.01||r<.5)return;
-  const t=S.t;cx.save();cx.globalAlpha=a;
+  const t=S.t,t0=performance.now();cx.save();cx.globalAlpha=a;
   switch(b.kind){
     case 'earth':case 'barren':case 'gas':case 'city':case 'machine':drawPlanet(b,x,y,r,t);break;
     case 'star':drawStar(b,x,y,r,t);break;
@@ -1554,6 +1551,7 @@ function drawBody(b,x,y,r,a){
     case 'asteroid':drawAsteroid(b,x,y,r,t);break;
   }
   cx.restore();
+  if(b.kind==='star'||b.kind==='earth'||b.kind==='barren'||b.kind==='gas'||b.kind==='city'||b.kind==='machine'){PERF.bodyNow=true;PERF.bodyMs=performance.now()-t0}
 }
 
 function render(dt){
@@ -2376,6 +2374,7 @@ applyLang();
 /* ---------------- 시험: WebGL로 그리는 지구형 행성 ----------------
    구(48×24 분할, 삼각형 2,304개)에 기존 절차적 텍스처(낮 면 + 구름)를 입히고 조명·대기 테두리를 셰이더로 계산한다.
    결과는 따로 만든 WebGL 캔버스에서 2D 캔버스로 복사해(drawImage) 기존 합성 순서(우주선 뒤, 비네트 아래)를 그대로 지킨다. */
+let frameNo=0;
 const GLX={c:null,g:null,ok:false,tried:false,S:1024,gen:0,info:'',upMs:0,D:0,tris:0};
 function glSetup(){
   if(GLX.tried)return GLX.ok;GLX.tried=true;
@@ -2388,14 +2387,20 @@ function glSetup(){
     const pg=(vs,fs)=>{const p=g.createProgram();g.attachShader(p,sh(g.VERTEX_SHADER,vs));g.attachShader(p,sh(g.FRAGMENT_SHADER,PR+fs));g.linkProgram(p);if(!g.getProgramParameter(p,g.LINK_STATUS))throw new Error(g.getProgramInfoLog(p));return p};
     const sp=pg(`attribute vec3 aP;attribute vec2 aT;uniform mat3 uM;varying vec3 vN;varying vec2 vT;
 void main(){vec3 q=uM*aP;vN=q;vT=aT;gl_Position=vec4(q.xy/1.16,-q.z*.4,1.);}`,
-`uniform sampler2D uD;uniform sampler2D uC;uniform float uRD;uniform float uRC;uniform float uHC;uniform vec3 uL;uniform vec3 uA;varying vec3 vN;varying vec2 vT;
+`uniform sampler2D uD;uniform sampler2D uC;uniform sampler2D uLt;uniform float uRD;uniform float uRC;uniform float uRL;uniform float uHC;uniform float uHL;uniform float uLA;uniform float uLo;uniform float uMode;uniform float uK1;uniform float uK2;uniform float uGlow;uniform vec3 uL;uniform vec3 uA;varying vec3 vN;varying vec2 vT;
 void main(){
   vec3 N=normalize(vN);
-  vec3 d=texture2D(uD,vec2((vT.x-.5+uRD)*.5,vT.y)).rgb;
+  vec3 col=texture2D(uD,vec2((vT.x-.5+uRD)*.5,vT.y)).rgb;
+  if(uMode>.5){   /* 항성: 조명 없이 가장자리만 어둡게 */
+    float rh=length(N.xy),a=rh<.35?0.:(rh<.75?mix(0.,uK1,(rh-.35)/.4):mix(uK1,uK2,(rh-.75)/.25));
+    gl_FragColor=vec4(col*(1.-a),1.);return;
+  }
   vec4 c=texture2D(uC,vec2((vT.x-.5+uRC)*.5,vT.y))*uHC;
-  vec3 col=mix(d,c.rgb,c.a*.78);
+  col=mix(col,c.rgb,c.a*.78);
   float sh=smoothstep(-.4,.75,dot(N,uL));
-  col*=mix(.08,1.08,sh);
+  col*=mix(uLo,1.08,sh);
+  if(uHL>.5){vec4 l=texture2D(uLt,vec2((vT.x-.5+uRL)*.5,vT.y));col+=l.rgb*l.a*uLA;}
+  if(uGlow>.5){float d=length(N.xy-vec2(-.55,.5));col=mix(col,vec3(1.,.93,.84),.3*(1.-smoothstep(0.,.9,d)));}
   float rim=pow(1.-max(N.z,0.),2.4);
   col+=uA*rim*(.2+.8*sh)*.85;
   gl_FragColor=vec4(col,1.);
@@ -2413,49 +2418,79 @@ void main(){float r=length(vQ),t=(r-.9)/.26;float a=(t<=0.||t>=1.)?0.:(t<.28?t/.
     const qb=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,qb);g.bufferData(g.ARRAY_BUFFER,new Float32Array([-1.16,-1.16,1.16,-1.16,-1.16,1.16,1.16,1.16]),g.STATIC_DRAW);
     const U=(p,n)=>g.getUniformLocation(p,n);
     Object.assign(GLX,{c,g,sp,hp,vb,ib,qb,n:ix.length,tris:ix.length/3,
-      su:{M:U(sp,'uM'),D:U(sp,'uD'),C:U(sp,'uC'),RD:U(sp,'uRD'),RC:U(sp,'uRC'),HC:U(sp,'uHC'),L:U(sp,'uL'),A:U(sp,'uA'),aP:g.getAttribLocation(sp,'aP'),aT:g.getAttribLocation(sp,'aT')},
+      su:{M:U(sp,'uM'),D:U(sp,'uD'),C:U(sp,'uC'),Lt:U(sp,'uLt'),RD:U(sp,'uRD'),RC:U(sp,'uRC'),RL:U(sp,'uRL'),HC:U(sp,'uHC'),HL:U(sp,'uHL'),LA:U(sp,'uLA'),Lo:U(sp,'uLo'),Mode:U(sp,'uMode'),K1:U(sp,'uK1'),K2:U(sp,'uK2'),Glow:U(sp,'uGlow'),L:U(sp,'uL'),A:U(sp,'uA'),aP:g.getAttribLocation(sp,'aP'),aT:g.getAttribLocation(sp,'aT')},
       hu:{A:U(hp,'uA'),K:U(hp,'uK'),aQ:g.getAttribLocation(hp,'aQ')}});
     const e0=g.createTexture();g.bindTexture(g.TEXTURE_2D,e0);g.texImage2D(g.TEXTURE_2D,0,g.RGBA,1,1,0,g.RGBA,g.UNSIGNED_BYTE,new Uint8Array([0,0,0,0]));GLX.empty=e0;
     c.addEventListener('webglcontextlost',e=>{e.preventDefault();GLX.ok=false;GLX.tried=false;GLX.gen++});
     const dbg=g.getExtension('WEBGL_debug_renderer_info');
-    GLX.info='WebGL'+(g.getParameter(g.VERSION).indexOf('2')>0?' 2':' 1')+' · '+(dbg?g.getParameter(dbg.UNMASKED_RENDERER_WEBGL):g.getParameter(g.RENDERER))+' · '+L('삼각형 ','tris ')+GLX.tris;
+    GLX.info='WebGL'+(/WebGL 2/.test(g.getParameter(g.VERSION))?' 2':' 1')+' · '+(dbg?g.getParameter(dbg.UNMASKED_RENDERER_WEBGL):g.getParameter(g.RENDERER))+' · '+L('삼각형 ','tris ')+GLX.tris;
     GLX.ok=true;return true;
   }catch(e){GLX.info=L('WebGL 초기화 실패: ','WebGL init failed: ')+(e&&e.message?e.message.slice(0,80):'');return false}
 }
-function glTex(canvas){
-  const g=GLX.g,t=g.createTexture();g.bindTexture(g.TEXTURE_2D,t);
-  g.texImage2D(g.TEXTURE_2D,0,g.RGBA,g.RGBA,g.UNSIGNED_BYTE,canvas);g.generateMipmap(g.TEXTURE_2D);
+const isPot=n=>(n&(n-1))===0;
+function glUp(canvas){   // 가로·세로가 2의 거듭제곱이 아니면 가까운 크기로 맞춰 올린다(WebGL1 호환)
+  const g=GLX.g;let src=canvas;
+  if(!isPot(canvas.width)||!isPot(canvas.height)){const p=n=>1<<Math.round(Math.log2(n));src=document.createElement('canvas');src.width=p(canvas.width);src.height=p(canvas.height);src.getContext('2d').drawImage(canvas,0,0,src.width,src.height)}
+  const t=g.createTexture();g.bindTexture(g.TEXTURE_2D,t);
+  g.texImage2D(g.TEXTURE_2D,0,g.RGBA,g.RGBA,g.UNSIGNED_BYTE,src);g.generateMipmap(g.TEXTURE_2D);
   g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MIN_FILTER,g.LINEAR_MIPMAP_LINEAR);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MAG_FILTER,g.LINEAR);
   g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_S,g.REPEAT);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_T,g.CLAMP_TO_EDGE);
   return t;
 }
-function glFree(b){try{if(GLX.g&&b.glT&&b.glT.gen===GLX.gen){if(b.glT.d)GLX.g.deleteTexture(b.glT.d);if(b.glT.c)GLX.g.deleteTexture(b.glT.c)}}catch(e){}b.glT=null}
-function glPlanet(b,x,y,r,t){
+function glTexOf(h,defer){   // h: {c,w,h} 텍스처. defer=true면 이번 프레임엔 올리지 않을 수 있다(끊김 분산)
+  if(!h)return null;
+  if(h.g&&h.g.gen===GLX.gen)return h.g.t;
+  if(defer&&GLX.upFrame===GLX.frame)return null;
+  const u0=performance.now();h.g={gen:GLX.gen,t:glUp(h.c)};GLX.upMs=performance.now()-u0;GLX.upFrame=GLX.frame;return h.g.t;
+}
+function glFree(b){try{if(GLX.g)for(const h of [b.tex,b.clouds,b.lights])if(h&&h.g){if(h.g.gen===GLX.gen)GLX.g.deleteTexture(h.g.t);h.g=null}}catch(e){}}
+/* o: {x,y,r,tilt,day,cloud,lights,rD,rC,rL,lA,lo,mode,k1,k2,glow,atm,k,halo}  → 성공하면 true */
+function glSphere(o){
   if(!glSetup())return false;
-  const g=GLX.g,P=GLX;
-  if(!b.glT||b.glT.gen!==P.gen){const u0=performance.now();b.glT={gen:P.gen,d:glTex(b.tex.c),c:null};P.upMs=performance.now()-u0}   // 낮 면 텍스처 업로드
-  else if(b.clouds&&!b.glT.c){const u0=performance.now();b.glT.c=glTex(b.clouds.c);P.upMs=performance.now()-u0}                   // 구름은 다음 프레임에 (끊김을 나눈다)
-  const need=Math.ceil(2*r*1.16*dpr),D=Math.min(P.S,Math.max(32,need));P.D=D;
-  g.viewport(0,0,D,D);g.enable(g.SCISSOR_TEST);g.scissor(0,0,D,D);g.clearColor(0,0,0,0);g.clear(g.COLOR_BUFFER_BIT|g.DEPTH_BUFFER_BIT);g.disable(g.SCISSOR_TEST);
-  const A=[.43,.67,1],K=.62;
-  // 대기 후광
-  g.disable(g.DEPTH_TEST);g.enable(g.BLEND);g.blendFunc(g.ONE,g.ONE_MINUS_SRC_ALPHA);
-  g.useProgram(P.hp);g.bindBuffer(g.ARRAY_BUFFER,P.qb);g.enableVertexAttribArray(P.hu.aQ);g.vertexAttribPointer(P.hu.aQ,2,g.FLOAT,false,0,0);
-  g.uniform3f(P.hu.A,A[0],A[1],A[2]);g.uniform1f(P.hu.K,K);g.drawArrays(g.TRIANGLE_STRIP,0,4);g.disableVertexAttribArray(P.hu.aQ);
-  // 구
+  const g=GLX.g,P=GLX;P.frame=(P.frame||0)+(P.stamp===frameNo?0:1);P.stamp=frameNo;
+  const dayT=glTexOf(o.day,false);if(!dayT)return false;
+  const cT=o.cloud?glTexOf(o.cloud,true):null,lT=o.lights?glTexOf(o.lights,true):null;
+  const r=o.r,need=Math.ceil(2*r*1.16*dpr),D=Math.min(P.S,Math.max(32,need));P.D=D;
+  g.viewport(0,0,D,D);g.enable(g.SCISSOR_TEST);g.scissor(0,0,Math.min(P.S,D+2),Math.min(P.S,D+2));   /* 가장자리 보간이 이전 그림을 끌어오지 않게 2px 더 지운다 */
+  g.clearColor(0,0,0,0);g.clear(g.COLOR_BUFFER_BIT|g.DEPTH_BUFFER_BIT);g.disable(g.SCISSOR_TEST);
+  const A=o.atm||[0,0,0];
+  if(o.halo){   // 대기 후광
+    g.disable(g.DEPTH_TEST);g.enable(g.BLEND);g.blendFunc(g.ONE,g.ONE_MINUS_SRC_ALPHA);
+    g.useProgram(P.hp);g.bindBuffer(g.ARRAY_BUFFER,P.qb);g.enableVertexAttribArray(P.hu.aQ);g.vertexAttribPointer(P.hu.aQ,2,g.FLOAT,false,0,0);
+    g.uniform3f(P.hu.A,A[0],A[1],A[2]);g.uniform1f(P.hu.K,o.k);g.drawArrays(g.TRIANGLE_STRIP,0,4);g.disableVertexAttribArray(P.hu.aQ);
+  }
   g.disable(g.BLEND);g.enable(g.DEPTH_TEST);g.depthFunc(g.LESS);
   g.useProgram(P.sp);g.bindBuffer(g.ARRAY_BUFFER,P.vb);g.bindBuffer(g.ELEMENT_ARRAY_BUFFER,P.ib);
   g.enableVertexAttribArray(P.su.aP);g.vertexAttribPointer(P.su.aP,3,g.FLOAT,false,20,0);g.enableVertexAttribArray(P.su.aT);g.vertexAttribPointer(P.su.aT,2,g.FLOAT,false,20,12);
-  const cs=Math.cos(b.tilt),sn=Math.sin(b.tilt);   // 2D의 cx.rotate(tilt)(시계 방향)와 같은 기울기
-  g.uniformMatrix3fv(P.su.M,false,new Float32Array([cs,-sn,0, sn,cs,0, 0,0,1]));
-  const rot=t*.012+b.seed*.0013,fr=v=>v-Math.floor(v);
-  g.uniform1f(P.su.RD,fr(rot));g.uniform1f(P.su.RC,fr(rot*1.4+.2));g.uniform1f(P.su.HC,b.glT.c?1:0);
-  g.uniform3f(P.su.L,-.55,.55,.62);g.uniform3f(P.su.A,A[0],A[1],A[2]);
-  g.activeTexture(g.TEXTURE0);g.bindTexture(g.TEXTURE_2D,b.glT.d);g.uniform1i(P.su.D,0);
-  g.activeTexture(g.TEXTURE1);g.bindTexture(g.TEXTURE_2D,b.glT.c||P.empty);g.uniform1i(P.su.C,1);
+  const cs=Math.cos(o.tilt||0),sn=Math.sin(o.tilt||0),fr=v=>v-Math.floor(v),u=P.su;   // 2D의 cx.rotate(tilt)와 같은 기울기
+  g.uniformMatrix3fv(u.M,false,new Float32Array([cs,-sn,0, sn,cs,0, 0,0,1]));
+  g.uniform1f(u.RD,fr(o.rD));g.uniform1f(u.RC,fr(o.rC||0));g.uniform1f(u.RL,fr(o.rL||0));
+  g.uniform1f(u.HC,cT?1:0);g.uniform1f(u.HL,lT?1:0);g.uniform1f(u.LA,o.lA||0);g.uniform1f(u.Lo,o.lo==null?.08:o.lo);
+  g.uniform1f(u.Mode,o.mode||0);g.uniform1f(u.K1,o.k1||0);g.uniform1f(u.K2,o.k2||0);g.uniform1f(u.Glow,o.glow?1:0);
+  g.uniform3f(u.L,-.55,.55,.62);g.uniform3f(u.A,A[0],A[1],A[2]);
+  g.activeTexture(g.TEXTURE0);g.bindTexture(g.TEXTURE_2D,dayT);g.uniform1i(u.D,0);
+  g.activeTexture(g.TEXTURE1);g.bindTexture(g.TEXTURE_2D,cT||P.empty);g.uniform1i(u.C,1);
+  g.activeTexture(g.TEXTURE2);g.bindTexture(g.TEXTURE_2D,lT||P.empty);g.uniform1i(u.Lt,2);
   g.drawElements(g.TRIANGLES,P.n,g.UNSIGNED_SHORT,0);g.disableVertexAttribArray(P.su.aP);g.disableVertexAttribArray(P.su.aT);
-  cx.drawImage(P.c,0,P.S-D,D,D,x-r*1.16,y-r*1.16,r*2.32,r*2.32);   // WebGL 캔버스는 아래쪽부터 채워진다
+  cx.drawImage(P.c,0,P.S-D,D,D,o.x-r*1.16,o.y-r*1.16,r*2.32,r*2.32);   // WebGL 캔버스는 아래쪽부터 채워진다
   return true;
+}
+function glFail(e){GLX.bad=1;GLX.info=L('WebGL 오류로 2D로 전환: ','WebGL error, using 2D: ')+(e&&e.message||e)}
+const GLATM={earth:[[110,170,255],.62,1,0],barren:[[255,200,170],.12,1.05,0],city:[[255,170,90],.7,1.05,0],machine:[[255,150,70],.4,.95,0]};
+const GASATM=[[255,210,150],[150,190,255],[150,230,220],[255,170,220],[255,190,120]];
+function glPlanetBody(b,x,y,r,rot){   // 행성의 구 부분(표면·구름·조명·대기)을 WebGL로 그린다. 고리·정거장은 호출한 쪽이 그대로 그린다.
+  if(!CFG.gl||GLX.bad)return false;
+  try{
+    let a=GLATM[b.kind];if(b.kind==='gas')a=[GASATM[b.gp],.62,1,0];if(!a)return false;
+    let k=a[1];if(b.kind==='barren')k=b.o.lava?.5:.12;
+    const lit=b.kind==='city'||b.kind==='machine';
+    return glSphere({x,y,r,tilt:b.tilt,day:b.tex,cloud:b.clouds,lights:lit?b.lights:null,rD:rot,rC:rot*1.4+.2,rL:rot,lA:b.kind==='city'?.9:.8,
+      lo:.08-(a[2]-1)*.6,glow:b.kind==='city',atm:a[0].map(v=>v/255),k,halo:true});
+  }catch(e){glFail(e);return false}
+}
+function glSunBody(sub,tx,x,y,rr,rot){
+  if(!CFG.gl||GLX.bad||!tx)return false;
+  try{return glSphere({x,y,r:rr,tilt:0,day:tx,rD:rot,mode:1,k1:sub==='B'?.05:.16,k2:sub==='R'?.72:sub==='B'?.2:.55,halo:false})}catch(e){glFail(e);return false}
 }
 
 /* ---------------- 성능 표시 ---------------- */
@@ -2490,7 +2525,7 @@ window.__labReady=true;labSync();
 let last=performance.now();
 function frame(now){
   const fdt=now-last,dt=Math.min(.05,fdt/1000);last=now;const j0=performance.now();
-  requestAnimationFrame(frame);   /* 한 프레임에서 오류가 나도 루프가 멈추지 않게 먼저 예약한다 */
+  frameNo++;requestAnimationFrame(frame);   /* 한 프레임에서 오류가 나도 루프가 멈추지 않게 먼저 예약한다 */
   try{update(dt);stopMsgStep(dt);prepBodies();runJobs(5);render(dt);hud();audioUpdate();perfRec(fdt,performance.now()-j0)}catch(e){if(!frame.er){frame.er=1;console.error(e)}}
 }
 requestAnimationFrame(frame);
