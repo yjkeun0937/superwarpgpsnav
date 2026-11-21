@@ -1437,6 +1437,7 @@ function drawHole(b,x,y,r,t){
   const rh=r*.46;
   cx.save();
   glowDisc(x,y,rh,r*2.6,'255,150,60',.2,0);
+  if(glHoleBody(b,x,y,r,t)){cx.restore();return}
   const disc=(a0,a1,flat,k)=>{   // 강착원반: 안쪽은 뜨겁고 빠르게 회전
     cx.save();cx.translate(x,y);cx.rotate(-.2);cx.scale(1,flat);cx.globalCompositeOperation='lighter';
     for(let i=0;i<26;i++){
@@ -1526,7 +1527,7 @@ function drawGalaxy(b,x,y,r,t){
 function drawNeb(b,x,y,r,t){
   if(!b.ready){placeholder(b,x,y,r);return}
   const R=r*3.3*(1+.012*Math.sin(t*.4));
-  cx.save();cx.globalCompositeOperation='lighter';cx.translate(x,y);cx.rotate(t*.006+b.seed*.1);cx.drawImage(b.tex.c,-R/2,-R/2,R,R);cx.restore();
+  cx.save();cx.globalCompositeOperation='lighter';cx.translate(x,y);if(b.kind==='pneb'){cx.rotate(-.5+(b.seed%7-3)*.07);cx.scale(1,.78)}cx.rotate(t*.006+b.seed*.1);cx.drawImage(b.tex.c,-R/2,-R/2,R,R);cx.restore();   /* 고리 성운은 살짝 기울여 입체감을 준다 */
 }
 function drawAsteroid(b,x,y,r,t){
   if(!b.ready||!ROCKS){placeholder(b,x,y,r);return}
@@ -1551,9 +1552,10 @@ function drawBody(b,x,y,r,a){
     case 'asteroid':drawAsteroid(b,x,y,r,t);break;
   }
   cx.restore();
-  if(b.kind==='star'||b.kind==='earth'||b.kind==='barren'||b.kind==='gas'||b.kind==='city'||b.kind==='machine'){PERF.bodyNow=true;PERF.bodyMs=performance.now()-t0}
+  PERF.bodyNow=true;PERF.bodyMs=performance.now()-t0;
 }
 
+const PLK={earth:1,barren:1,gas:1,city:1,machine:1},BODY_FAR=2/3;   // 행성형이 아닌 천체는 최접근 때의 크기를 2/3로 (그만큼 멀리서 회전)
 function render(dt){
   const w=S.w,cx0=W*.46,cy0=H*.40,F=Math.sqrt(W*W+H*H)*.38,wv=S.curW*CURVE_GAIN;
   const fx=Math.sin(S.phi),fz=Math.cos(S.phi),rx=Math.cos(S.phi),rz=-Math.sin(S.phi);
@@ -1607,9 +1609,9 @@ function render(dt){
     cx.fillStyle=g;cx.fillRect(0,0,W,H);
   }
 
+  // 천체 (다른 우주선·내 우주선은 항상 천체보다 앞에 그린다)
+  if(fm){const Rb=Math.min(W,H)*.34,kk=PLK[fm.body.kind]?1:BODY_FAR;drawBody(fm.body,cx0+ox,cy0+H*.03,Rb*sc*kk,al*clamp(1-w*1.6,0,1))}
   drawFly(cx0,cy0,F);drawShip(cx0,cy0,F);
-  // 천체
-  if(fm){const Rb=Math.min(W,H)*.34;drawBody(fm.body,cx0+ox,cy0+H*.03,Rb*sc,al*clamp(1-w*1.6,0,1))}
 
   // 비네트 / 플래시
   const vg=cx.createRadialGradient(cx0,cy0,Math.min(W,H)*.35,cx0,cy0,Math.max(W,H)*.75);
@@ -2408,6 +2410,45 @@ void main(){
     const hp=pg(`attribute vec2 aQ;varying vec2 vQ;void main(){vQ=aQ;gl_Position=vec4(aQ/1.16,0.,1.);}`,
 `uniform vec3 uA;uniform float uK;varying vec2 vQ;
 void main(){float r=length(vQ),t=(r-.9)/.26;float a=(t<=0.||t>=1.)?0.:(t<.28?t/.28:(1.-t)/.72);a*=.5*uK;gl_FragColor=vec4(uA*a,a);}`);
+    const bp=pg(`attribute vec2 aQ;varying vec2 vQ;void main(){vQ=aQ/1.16*4.2;gl_Position=vec4(aQ/1.16,0.,1.);}`,
+`uniform float uT;uniform float uS;varying vec2 vQ;
+float hs(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hs(i),hs(i+vec2(1.,0.)),f.x),mix(hs(i+vec2(0.,1.)),hs(i+vec2(1.)),f.x),f.y);}
+vec3 heat(float f){return mix(mix(vec3(1.,.95,.72),vec3(1.,.58,.16),smoothstep(0.,.5,f)),vec3(.78,.2,.06),smoothstep(.4,1.,f));}
+void main(){
+  vec2 p=vQ;float r=length(p);
+  /* 원반 좌표: -0.2rad 회전, 세로로 납작(0.21) */
+  float c=cos(.2),s=sin(.2);vec2 q=vec2(c*p.x+s*p.y,-s*p.x+c*p.y);vec2 d=vec2(q.x,q.y/.21);float rho=length(d),th=atan(d.y,d.x);
+  vec3 col=vec3(0.);
+  /* 납작한 바깥 빛무리 */
+  float gl=clamp(1.-length(d)/3.8,0.,1.);gl*=smoothstep(1.,1.5,length(d));col+=vec3(1.,.67,.27)*.4*gl*gl*.6*(1.-smoothstep(0.,1.,abs(q.y)/1.2));
+  /* 강착원반: 뜨거운 안쪽이 빠르게 돈다. 앞쪽(q.y<0)과 뒤쪽(q.y>0)을 나누어 더한다 */
+  float f=clamp((rho-1.18)/2.3,0.,1.);
+  float inD=smoothstep(1.1,1.22,rho)*(1.-smoothstep(3.3,3.5,rho));
+  float om=1.7/pow(rho,1.4);float a2=th-uT*om*.5;
+  float n=vn(vec2(cos(a2),sin(a2))*2.4+vec2(rho*6.5+uS));float n2=vn(vec2(cos(a2*2.),sin(a2*2.))*3.1+vec2(rho*13.+uS*.7));
+  float st=clamp(.35+.9*n*(.6+.8*n2),0.,1.4);
+  float dop=.78-.42*(d.x/max(rho,.001));
+  vec3 dc=heat(f)*(.78-.6*f)*1.5*st*dop*inD;
+  vec3 back=(q.y>0.)?dc:vec3(0.),front=(q.y<=0.)?dc*1.15:vec3(0.);
+  /* 렌즈로 휘어 보이는 원반(위·아래 아치): 가장자리에서 서서히 사라져 끊김이 없다 */
+  float sph=atan(p.y,p.x);
+  float mu=smoothstep(.0,.55,sin(sph)),ml=smoothstep(.0,.55,-sin(sph))*.5;
+  float tu=clamp((r-1.05)/1.05,0.,1.),tl=clamp((r-1.05)/.4,0.,1.);
+  float ea=smoothstep(1.0,1.07,r);
+  float an=vn(vec2(cos(sph*1.),sin(sph*1.))*2.+vec2(r*9.+uS+uT*.15*(1.-tu)));
+  vec3 arc=heat(tu*.55)*(.55-.4*tu)*mu*ea*(1.-smoothstep(1.9,2.2,r))*(.7+.5*an);
+  arc+=heat(tl*.7)*(.5-.4*tl)*ml*ea*(1.-smoothstep(1.4,1.55,r))*(.7+.5*an);
+  col+=back+arc;
+  /* 사건의 지평선(그림자) */
+  float sh=1.-smoothstep(.992,1.012,r);
+  col*=(1.-sh);
+  /* 광자 고리 */
+  col+=vec3(1.,.93,.75)*(.95*exp(-pow((r-1.02)/.022,2.))+.3*exp(-pow((r-1.08)/.06,2.)));
+  col+=front;
+  float a=clamp(max(col.r,max(col.g,col.b)),0.,1.);a=max(a,sh);
+  gl_FragColor=vec4(min(col,vec3(1.)),a);
+}`);
     // 구 메시
     const SEG=48,RING=24,vp=[],ix=[];
     for(let j=0;j<=RING;j++){const lat=Math.PI/2-j/RING*Math.PI,cl=Math.cos(lat),sl=Math.sin(lat);
@@ -2417,7 +2458,7 @@ void main(){float r=length(vQ),t=(r-.9)/.26;float a=(t<=0.||t>=1.)?0.:(t<.28?t/.
     const ib=g.createBuffer();g.bindBuffer(g.ELEMENT_ARRAY_BUFFER,ib);g.bufferData(g.ELEMENT_ARRAY_BUFFER,new Uint16Array(ix),g.STATIC_DRAW);
     const qb=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,qb);g.bufferData(g.ARRAY_BUFFER,new Float32Array([-1.16,-1.16,1.16,-1.16,-1.16,1.16,1.16,1.16]),g.STATIC_DRAW);
     const U=(p,n)=>g.getUniformLocation(p,n);
-    Object.assign(GLX,{c,g,sp,hp,vb,ib,qb,n:ix.length,tris:ix.length/3,
+    Object.assign(GLX,{c,g,sp,hp,bp,vb,ib,qb,n:ix.length,tris:ix.length/3,bu:{T:g.getUniformLocation(bp,'uT'),S:g.getUniformLocation(bp,'uS'),aQ:g.getAttribLocation(bp,'aQ')},
       su:{M:U(sp,'uM'),D:U(sp,'uD'),C:U(sp,'uC'),Lt:U(sp,'uLt'),RD:U(sp,'uRD'),RC:U(sp,'uRC'),RL:U(sp,'uRL'),HC:U(sp,'uHC'),HL:U(sp,'uHL'),LA:U(sp,'uLA'),Lo:U(sp,'uLo'),Mode:U(sp,'uMode'),K1:U(sp,'uK1'),K2:U(sp,'uK2'),Glow:U(sp,'uGlow'),L:U(sp,'uL'),A:U(sp,'uA'),aP:g.getAttribLocation(sp,'aP'),aT:g.getAttribLocation(sp,'aT')},
       hu:{A:U(hp,'uA'),K:U(hp,'uK'),aQ:g.getAttribLocation(hp,'aQ')}});
     const e0=g.createTexture();g.bindTexture(g.TEXTURE_2D,e0);g.texImage2D(g.TEXTURE_2D,0,g.RGBA,1,1,0,g.RGBA,g.UNSIGNED_BYTE,new Uint8Array([0,0,0,0]));GLX.empty=e0;
@@ -2474,6 +2515,19 @@ function glSphere(o){
   g.drawElements(g.TRIANGLES,P.n,g.UNSIGNED_SHORT,0);g.disableVertexAttribArray(P.su.aP);g.disableVertexAttribArray(P.su.aT);
   cx.drawImage(P.c,0,P.S-D,D,D,o.x-r*1.16,o.y-r*1.16,r*2.32,r*2.32);   // WebGL 캔버스는 아래쪽부터 채워진다
   return true;
+}
+function glHoleBody(b,x,y,r,t){   // 블랙홀: 강착원반·렌즈 아치를 셰이더로 연속하게 그린다 (2D의 조각난 호 대신)
+  if(!CFG.gl||GLX.bad)return false;
+  try{
+    if(!glSetup())return false;
+    const g=GLX.g,P=GLX,rh=r*.46,E=4.2,half=E*rh,D=Math.min(P.S,Math.max(32,Math.ceil(2*half*dpr)));P.D=D;
+    g.viewport(0,0,D,D);g.enable(g.SCISSOR_TEST);g.scissor(0,0,Math.min(P.S,D+2),Math.min(P.S,D+2));g.clearColor(0,0,0,0);g.clear(g.COLOR_BUFFER_BIT);g.disable(g.SCISSOR_TEST);
+    g.disable(g.DEPTH_TEST);g.disable(g.BLEND);
+    g.useProgram(P.bp);g.bindBuffer(g.ARRAY_BUFFER,P.qb);g.enableVertexAttribArray(P.bu.aQ);g.vertexAttribPointer(P.bu.aQ,2,g.FLOAT,false,0,0);
+    g.uniform1f(P.bu.T,t);g.uniform1f(P.bu.S,(b.seed%13)*.37);g.drawArrays(g.TRIANGLE_STRIP,0,4);g.disableVertexAttribArray(P.bu.aQ);
+    cx.drawImage(P.c,0,P.S-D,D,D,x-half,y-half,2*half,2*half);
+    return true;
+  }catch(e){glFail(e);return false}
 }
 function glFail(e){GLX.bad=1;GLX.info=L('WebGL 오류로 2D로 전환: ','WebGL error, using 2D: ')+(e&&e.message||e)}
 const GLATM={earth:[[110,170,255],.62,1,0],barren:[[255,200,170],.12,1.05,0],city:[[255,170,90],.7,1.05,0],machine:[[255,150,70],.4,.95,0]};
