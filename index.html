@@ -688,16 +688,21 @@ function* genBarren(b){
   },(g)=>{
     /* 구 메시의 세로 좌표는 sin(위도)에 비례(가로는 경도에 비례)하므로 지도 위의 원은 구에서 타원이 된다.
        구 위에서 원이 되도록 지도에서는 가로 1/cos(위도), 세로 (256/(512/2π))·cos(위도)=1.571·cos(위도) 배의 타원으로 그린다 */
+    /* 분화구는 따로 한 겹(layer)에 순서대로 그린다. 나중에 생기는 분화구는 자기 안쪽에 있는 이전 분화구의 부분(테두리 호·그늘)을 먼저 지운 뒤 그려진다 */
+    const lyc=document.createElement('canvas');lyc.width=512;lyc.height=256;const lg=lyc.getContext('2d');
     for(let i=0;i<110;i++){
       const cxp=r()*512,cyp=(.03+r()*.94)*256,rad=2+Math.pow(r(),2.4)*22,cl=Math.sqrt(Math.max(.01,1-Math.pow(1-2*cyp/256,2))),sx=1/cl,sy=1.571*cl;
       for(const dx of[0,-512,512]){
         const px=cxp+dx;if(px<-rad*sx*1.5||px>512+rad*sx*1.5)continue;
-        g.save();g.translate(px,cyp);g.scale(sx,sy);
-        const gr=g.createRadialGradient(-rad*.18,-rad*.18,rad*.1,0,0,rad);
+        lg.save();lg.translate(px,cyp);lg.scale(sx,sy);
+        lg.globalCompositeOperation='destination-out';lg.fillStyle='#000';lg.beginPath();lg.arc(0,0,rad*1.03,0,6.283);lg.fill();   // 이전 분화구에서 겹치는 부분 제거
+        lg.globalCompositeOperation='source-over';
+        const gr=lg.createRadialGradient(-rad*.18,-rad*.18,rad*.1,0,0,rad);
         gr.addColorStop(0,'rgba(0,0,0,.34)');gr.addColorStop(.8,'rgba(0,0,0,.18)');gr.addColorStop(.93,'rgba(255,240,220,.26)');gr.addColorStop(1,'rgba(255,240,220,0)');
-        g.fillStyle=gr;g.beginPath();g.arc(0,0,rad,0,6.283);g.fill();g.restore();
+        lg.fillStyle=gr;lg.beginPath();lg.arc(0,0,rad,0,6.283);lg.fill();lg.restore();
       }
     }
+    g.drawImage(lyc,0,0);
   });
   b.tex=dbl(c);
   if(lava){   // 용암은 스스로 빛난다: 균열 마스크를 발광 텍스처로 만들어 어두운 면에서도 보이게 한다(always)
@@ -2662,6 +2667,11 @@ cfgSync();msgBuild();
 const BGRP=[[['행성','PLANET'],['earth','barren','gas','city','machine']],[['항성','STAR'],['star']],[['블랙홀·펄서·퀘이사','EXTREME'],['hole','pulsar','quasar']],[['은하·성운','DEEP SKY'],['galaxy','neb','pneb']],[['소행성대','BELT'],['asteroid']]];
 const btag=p=>{const o=typeof p[2]==='object'?p[2]:{},t=[];if(o.oring)t.push(L('궤도환','orbital ring'));if(o.elev)t.push(L('엘리베이터','elevator'));if(o.ring)t.push(L('고리','ring'));if(o.st)t.push(L('정거장','station'));if(o.lava)t.push(L('용암','lava'));if(p[1]==='star'){const SN={Y:['황색왜성','yellow dwarf'],R:['적색초거성','red supergiant'],B:['청색거성','blue giant'],W:['백색왜성','white dwarf'],K:['주황색왜성','orange dwarf'],Bin:['쌍성','binary']}[p[2]];if(SN)t.push(L(SN[0],SN[1]))}
   if(p[1]==='hole')t.push(L('강착원반','accretion disk'));if(p[1]==='pulsar'){t.push(L('회전 빔','spinning beam'));if(o.P){t.push(L('주기 ','P ')+(o.P<.1?(o.P*1000).toFixed(3)+' ms':o.P.toFixed(3)+' s'),'α '+o.al+'°'+(o.est?L(' (추정)',' (est.)'):''));}else t.push(L('가상 · 각도·주기 무작위','fictional · random angle & period'))}if(p[1]==='quasar')t.push(L('상대론적 제트','relativistic jets'),L('강착원반','accretion disk'));
+  if(p[1]==='earth')t.push(L('지구형','Earth-like'),L('바다·대기','ocean · atmosphere'),L('구름','clouds'));
+  if(p[1]==='gas')t.push(L('가스 행성','gas giant'));
+  if(p[1]==='barren')t.push(L('크레이터','craters'));
+  if((p[1]==='earth'||p[1]==='machine')&&!o.oring)t.push(L('위성','satellites'));
+  if(p[1]==='earth'||p[1]==='city'||p[1]==='machine'||(p[1]==='barren'&&!o.lava))t.push(L('야간조명','night lights'));
   if(p[1]==='machine')t.push(L('기계도시','machine city'));if(p[1]==='city')t.push(L('도시','city'));return t};
 function bdBuild(){
   $('bdList').innerHTML=BGRP.map(([nm,ks],gi)=>{const items=BODIES.filter(p=>ks.includes(p[1]));
