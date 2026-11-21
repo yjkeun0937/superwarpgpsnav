@@ -374,6 +374,8 @@ html[lang=en] #toast b{font-size:30px}
       <input class="rng" id="cfgShM" type="range" min="1" max="10" step="1" value="6"><div class="cfgm" id="cfgShMM"></div></div>
     <div class="cfgrow"><div class="cfgh"><label data-en="Other ship speed">다른 우주선 속도</label><b id="cfgShSV"></b></div>
       <input class="rng" id="cfgShS" type="range" min="50" max="300" step="5" value="100"><div class="cfgm" id="cfgShSM"></div></div>
+    <div class="cfgrow"><div class="cfgh"><label data-en="Other ship shrink with distance (exponent)">다른 우주선 거리 축소 지수</label><b id="cfgShZV"></b></div>
+      <input class="rng" id="cfgShZ" type="range" min="100" max="400" step="5" value="200"><div class="cfgm" id="cfgShZM"></div></div>
     <div class="cfgsec" data-en="MESSAGES">메시지</div>
     <div id="msgRows"></div>
         <button class="cfgsec cfgfold" id="bdFold" type="button" aria-expanded="false"><span data-en="CELESTIAL BODIES">등장 천체 목록</span><b id="bdCnt"></b><i>▼</i></button>
@@ -437,14 +439,14 @@ const DROP_D=0.4;      // km: 워프 아웃 시작 거리
 const LY_PER_KM=1000;  // 1 km = 1,000 광년
 
 /* ---------------- 설정 (CONFIG) ---------------- */
-const CKEY='warpnav.cfg',CFG={ver:4,fly:1,st:1,fq:{fly:1,ship:.75},msg:{},off:{},shMax:6,shSp:1,lang:'ko',gl:0,perf:0,dbg:0};   // off: 등장하지 않게 끈 천체 이름
+const CKEY='warpnav.cfg',CFG={ver:4,fly:1,st:1,fq:{fly:1,ship:.75},msg:{},off:{},shMax:6,shSp:1,shZ:2,lang:'ko',gl:0,perf:0,dbg:0};   // off: 등장하지 않게 끈 천체 이름
 const FQB={fly:[16,42],ship:[9,27]};   // 기준 간격(초): 실제 간격 = 기준 ÷ 배율
 const fqTxt=(k,v)=>v>0?Math.round(FQB[k][0]/v)+'-'+Math.round(FQB[k][1]/v)+' '+'<span class="u">'+L('초','sec')+'</span>':'<span class="u">'+L('끔','OFF')+'</span>';
 const MCOL={g:'#6dff9c',a:'#ffb21c',r:'#ff4136'};                 // 속도 막대와 같은 색 (초록 / 주황 / 빨강)
 const MDEF={lost:{on:1,c:'r',hz:3},route:{on:1,c:'a',hz:0},stop:{on:1,c:'g',hz:.5},arrive:{on:1,c:'g',hz:1.2},depart:{on:1,c:'g',hz:0}};   // hz: 점등 속도, 0이면 점등하지 않음
 const MNAME={lost:['GPS 신호 소실 / 대기','GPS signal lost / waiting'],route:['경로 변경 (항로 이탈)','Course change (off route)'],stop:['정차 중','Stopped'],arrive:['도착 직전','Arriving'],depart:['출발 (첫 이동)','Departure (first move)']};
 const MDEFAULTS=()=>JSON.parse(JSON.stringify(MDEF));
-try{const o=JSON.parse(localStorage.getItem(CKEY)||'{}');if(o.fly>=.5&&o.fly<=3)CFG.fly=o.fly;if(o.st>=.1&&o.st<=3)CFG.st=o.st;if(o.fq){if(o.fq.fly>=0&&o.fq.fly<=3)CFG.fq.fly=o.fq.fly;if(o.ver>=3&&o.fq.ship>=0){const v=o.ver>=4?o.fq.ship:o.fq.ship*9/16;CFG.fq.ship=Math.min(3,v)}/*ver<4: 예전 기준(16~42초)을 새 기준(9~27초)으로 환산해 같은 간격 유지*/ }CFG.msg=MDEFAULTS();if(o.msg)for(const k in MDEF){const m=o.msg[k];if(m){if(m.on===0||m.on===1)CFG.msg[k].on=m.on;if(MCOL[m.c])CFG.msg[k].c=m.c;if(m.hz>=0&&m.hz<=4)CFG.msg[k].hz=m.hz}}if(o.off&&typeof o.off==='object')for(const n in o.off)if(o.off[n])CFG.off[n]=1;if(o.shMax>=1&&o.shMax<=10)CFG.shMax=Math.round(o.shMax);if(o.shSp>=.5&&o.shSp<=3)CFG.shSp=o.shSp;if(o.lang==='en'||o.lang==='ko')CFG.lang=o.lang;CFG.gl=o.gl?1:0;CFG.perf=o.perf?1:0;CFG.dbg=o.dbg?1:0}catch(e){}
+try{const o=JSON.parse(localStorage.getItem(CKEY)||'{}');if(o.fly>=.5&&o.fly<=3)CFG.fly=o.fly;if(o.st>=.1&&o.st<=3)CFG.st=o.st;if(o.fq){if(o.fq.fly>=0&&o.fq.fly<=3)CFG.fq.fly=o.fq.fly;if(o.ver>=3&&o.fq.ship>=0){const v=o.ver>=4?o.fq.ship:o.fq.ship*9/16;CFG.fq.ship=Math.min(3,v)}/*ver<4: 예전 기준(16~42초)을 새 기준(9~27초)으로 환산해 같은 간격 유지*/ }CFG.msg=MDEFAULTS();if(o.msg)for(const k in MDEF){const m=o.msg[k];if(m){if(m.on===0||m.on===1)CFG.msg[k].on=m.on;if(MCOL[m.c])CFG.msg[k].c=m.c;if(m.hz>=0&&m.hz<=4)CFG.msg[k].hz=m.hz}}if(o.off&&typeof o.off==='object')for(const n in o.off)if(o.off[n])CFG.off[n]=1;if(o.shMax>=1&&o.shMax<=10)CFG.shMax=Math.round(o.shMax);if(o.shSp>=.5&&o.shSp<=3)CFG.shSp=o.shSp;if(o.shZ>=1&&o.shZ<=4)CFG.shZ=o.shZ;if(o.lang==='en'||o.lang==='ko')CFG.lang=o.lang;CFG.gl=o.gl?1:0;CFG.perf=o.perf?1:0;CFG.dbg=o.dbg?1:0}catch(e){}
 const L=(k,e)=>CFG.lang==='en'?e:k;   // 선택한 언어의 문구 고르기 (한국어, English)
 if(!CFG.msg.lost)CFG.msg=MDEFAULTS();
 
@@ -1328,7 +1330,7 @@ function shipStep(dt,dn){
     if(S.v<5)sh.kill+=dt*.4;
     if(S.turn)sh.kill+=dt*2.5;   // 천체가 나타나는 동안에는 이미 있던 우주선도 그대로 이동하고, 회전 중에만 사라진다
     sh.fade=sh.same?clamp((Math.max((sh.Z+.2)/14.2,sh.t/45)-.7)/.2,0,1):0;   // 같은 방향 우주선은 70% 진행부터 희미해져 90%에서 투명
-    sh.dead=sh.kill>=1||sh.fade>=1||sh.t>45||(sh.same&&sh.Z>14)||(!sh.same&&(sh.Z+sh.m.L*.5+sh.tl)<Math.max(.14,Math.abs(sh.X)*FS/(W*.6),Math.abs(sh.Y)*FS/(H*.6)));   // 엇갈린 우주선은 빛꼬리까지 화면 밖으로 나간 뒤에 사라진다
+    sh.dead=sh.kill>=1||sh.fade>=1||sh.t>45||(sh.same&&sh.Z>14)||(!sh.same&&(sh.Z+sh.m.L*.5+sh.tl)<dzInv(Math.max(.14,Math.abs(sh.X)*FS/(W*.6),Math.abs(sh.Y)*FS/(H*.6))));   // 엇갈린 우주선은 빛꼬리까지 화면 밖으로 나간 뒤에 사라진다
   }
   if(S.ships.some(o=>o.dead))S.ships=S.ships.filter(o=>!o.dead);
   if(CFG.fq.ship<=0){S.shQ.length=0;return}
@@ -1346,7 +1348,7 @@ function shipStep(dt,dn){
 }
 function curvK(){return clamp(S.curW*CURVE_GAIN/(FLY_K*Math.max(S.v,20)),-.12,.12)}   // 시선 방향 단위 길이당 도로의 굽이 (우회전 +)
 function drawShip(cx0,cy0,F0){S.ships.slice().sort((a,b)=>b.Z-a.Z).forEach(sh=>drawShip1(sh,cx0,cy0,F0))}   // 먼 우주선부터 그린다
-const dz=Z=>Z<1?Z:Math.pow(Z,1.35);   // 다른 우주선의 원근: 1보다 먼 곳은 거리^1.35로 나눠 멀수록 더 빨리 작아진다(1 이하는 그대로)
+const dz=Z=>Z<1?Z:Math.pow(Z,CFG.shZ),dzInv=D=>D<1?D:Math.pow(D,1/CFG.shZ);   // 다른 우주선의 원근: 1보다 먼 곳은 거리^지수(config, 1~4)로 나눠 멀수록 더 빨리 작아지게 한다(1 이하는 그대로). dzInv는 그 역함수
 function drawShip1(sh,cx0,cy0,F0){
   const m=sh.m,L=m.L,NEAR=.14;
   const hullOn=sh.Z>=NEAR+L*.5;
@@ -1368,7 +1370,7 @@ function drawShip1(sh,cx0,cy0,F0){
     let len=sh.tl,t0=0;if(bz<0){const zmin=Math.max(.3,ez*.5);if(ez+bz*len<zmin)len=Math.max(0,(ez-zmin)/-bz)}   // 카메라 쪽으로 뻗는 줄기는 화면을 가로지르지 않게 제한
     if(ez<NEAR){t0=len>0?(NEAR-ez)/(bz*len):1;if(t0>=1)continue}   // 우주선이 지나간 뒤에도 카메라 앞에 남은 빛꼬리만 그린다
     const NS=8,P=[];for(let i=0;i<=NS;i++){const t=t0+(1-t0)*i/NS;P.push(scr(ex+bx*len*t,ey,ez+bz*len*t))}
-    const p0=P[0],p1=P[NS],rad=e.r*L,w0=Math.max(.8,rad/p0[2]*F0*.8),w1=Math.max(.4,rad/p1[2]*F0*.35);
+    const p0=P[0],p1=P[NS],rad=e.r*L,w0=Math.max(.35,rad/p0[2]*F0*.8),w1=Math.max(.2,rad/p1[2]*F0*.35);
     const Lf=[],Rt=[];
     for(let i=0;i<=NS;i++){
       const a0=P[Math.max(0,i-1)],a1=P[Math.min(NS,i+1)];let dx=a1[0]-a0[0],dy=a1[1]-a0[1];const dl=Math.hypot(dx,dy)||1;dx/=dl;dy/=dl;
@@ -1418,7 +1420,7 @@ function drawShip1(sh,cx0,cy0,F0){
   cx.globalCompositeOperation='lighter';
   for(const e of m.E){
     const q=tf([e.x,e.y,e.z]),ez=sh.Z+q[2];if(ez<NEAR)continue;
-    const p=scr(sh.X+q[0],sh.Y+q[1],ez),rr=Math.max(2,e.r*L/dz(ez)*F0*2.6);
+    const p=scr(sh.X+q[0],sh.Y+q[1],ez),rr=Math.max(.9,e.r*L/dz(ez)*F0*2.6);
     const g=cx.createRadialGradient(p[0],p[1],0,p[0],p[1],rr);
     g.addColorStop(0,'rgba(255,255,255,.9)');g.addColorStop(.25,`rgba(${m.trail[0]},${m.trail[1]},${m.trail[2]},.55)`);g.addColorStop(1,`rgba(${m.trail[0]},${m.trail[1]},${m.trail[2]},0)`);
     cx.fillStyle=g;cx.fillRect(p[0]-rr,p[1]-rr,rr*2,rr*2);
@@ -2530,17 +2532,18 @@ function cfgSync(){
   $('cfgFqF').value=Math.round(CFG.fq.fly*100);$('cfgFqS').value=Math.round(CFG.fq.ship*100);
   $('cfgFqFV').innerHTML=fqTxt('fly',CFG.fq.fly);$('cfgFqSV').innerHTML=fqTxt('ship',CFG.fq.ship);
   $('cfgShM').value=CFG.shMax;$('cfgShMV').innerHTML=L('<span class="u">최대</span> '+CFG.shMax+'<span class="u">대</span>','<span class="u">MAX</span> '+CFG.shMax);
-  $('cfgShS').value=Math.round(CFG.shSp*100);$('cfgShSV').textContent='×'+CFG.shSp.toFixed(2);
+  $('cfgShS').value=Math.round(CFG.shSp*100);$('cfgShSV').textContent='×'+CFG.shSp.toFixed(2);$('cfgShZ').value=Math.round(CFG.shZ*100);$('cfgShZV').textContent='Z^'+CFG.shZ.toFixed(2);
 }
 cfgMarks('cfgFlyM',.5,3,['0.5','1','2','3']);cfgMarks('cfgStM',.1,3,['0.1','1','2','3']);
 $('cfgFly').oninput=e=>{CFG.fly=e.target.value/100;cfgSync();cfgSave()};
 $('cfgSt').oninput=e=>{CFG.st=e.target.value/100;cfgSync();cfgSave()};
-cfgMarks('cfgShMM',1,10,['1','2','3','4','5','6','7','8','9','10']);cfgMarks('cfgShSM',.5,3,['0.5','1','2','3']);cfgMarks('cfgFqFM',0,3,['0','1','2','3']);cfgMarks('cfgFqSM',0,3,['0','1','2','3']);
+cfgMarks('cfgShMM',1,10,['1','2','3','4','5','6','7','8','9','10']);cfgMarks('cfgShSM',.5,3,['0.5','1','2','3']);cfgMarks('cfgShZM',1,4,['1','2','3','4']);cfgMarks('cfgFqFM',0,3,['0','1','2','3']);cfgMarks('cfgFqSM',0,3,['0','1','2','3']);
 $('cfgFqF').oninput=e=>{CFG.fq.fly=e.target.value/100;S.flyWait=Math.min(S.flyWait,(16+Math.random()*26)/Math.max(.05,CFG.fq.fly));cfgSync();cfgSave()};
 $('cfgFqS').oninput=e=>{CFG.fq.ship=e.target.value/100;S.shWait=Math.min(S.shWait,shInterval());cfgSync();cfgSave()};
 $('cfgShM').oninput=e=>{CFG.shMax=+e.target.value;cfgSync();cfgSave()};
 $('cfgShS').oninput=e=>{CFG.shSp=e.target.value/100;cfgSync();cfgSave()};
-$('cfgReset').onclick=()=>{CFG.fly=1;CFG.st=1;CFG.fq.fly=1;CFG.fq.ship=.75;CFG.shMax=6;CFG.shSp=1;cfgSync();cfgSave()};
+$('cfgShZ').oninput=e=>{CFG.shZ=e.target.value/100;cfgSync();cfgSave()};
+$('cfgReset').onclick=()=>{CFG.fly=1;CFG.st=1;CFG.fq.fly=1;CFG.fq.ship=.75;CFG.shMax=6;CFG.shSp=1;CFG.shZ=2;cfgSync();cfgSave()};
 $('bCfg').onclick=$('bCfg0').onclick=()=>{cfgSync();$('cfg').classList.remove('hide')};
 const cfgClose=()=>{$('cfg').classList.add('hide');if(S.toastTest)hideToast()};
 $('cfgClose').onclick=cfgClose;
