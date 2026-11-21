@@ -689,9 +689,19 @@ function* genBarren(b){
     /* 구 메시의 세로 좌표는 sin(위도)에 비례(가로는 경도에 비례)하므로 지도 위의 원은 구에서 타원이 된다.
        구 위에서 원이 되도록 지도에서는 가로 1/cos(위도), 세로 (256/(512/2π))·cos(위도)=1.571·cos(위도) 배의 타원으로 그린다 */
     /* 분화구는 따로 한 겹(layer)에 순서대로 그린다. 나중에 생기는 분화구는 자기 안쪽에 있는 이전 분화구의 부분(테두리 호·그늘)을 먼저 지운 뒤 그려진다 */
-    const lyc=document.createElement('canvas');lyc.width=512;lyc.height=256;const lg=lyc.getContext('2d');
+    const lyc=document.createElement('canvas');lyc.width=512;lyc.height=256;const lg=lyc.getContext('2d');const cr=[];
     for(let i=0;i<110;i++){
-      const cxp=r()*512,cyp=(.03+r()*.94)*256,rad=2+Math.pow(r(),2.4)*22,cl=Math.sqrt(Math.max(.01,1-Math.pow(1-2*cyp/256,2))),sx=1/cl,sy=1.571*cl;
+      /* 크기: 뽑힐 확률이 크기에 반비례(로그 균등, 반지름 2~24) → 작은 크레이터가 많고 큰 것은 드물다.
+         위치: 이미 놓인 크레이터와 겹치면 20% 확률로만 통과, 아니면 위치를 다시 뽑는다(최대 40번, 계속 겹치면 그대로 통과). 겹침은 구 위의 각거리로 판정한다 */
+      const rad=2*Math.pow(12,r());let cxp=0,cyp=0;
+      for(let tr=0;tr<40;tr++){
+        cxp=r()*512;cyp=(.03+r()*.94)*256;
+        const sz=1-2*cyp/256,cz=Math.sqrt(Math.max(0,1-sz*sz)),lo=cxp/512*6.2832,ux=cz*Math.cos(lo),uy=cz*Math.sin(lo);
+        let hit=false;for(const q of cr){if(Math.acos(Math.max(-1,Math.min(1,ux*q.x+uy*q.y+sz*q.z)))<(rad+q.rad)*.012272){hit=true;break}}
+        if(!hit||r()<.2){cr.push({x:ux,y:uy,z:sz,rad});break}
+        if(tr===39)cr.push({x:ux,y:uy,z:sz,rad});
+      }
+      const cl=Math.sqrt(Math.max(.01,1-Math.pow(1-2*cyp/256,2))),sx=1/cl,sy=1.571*cl;
       for(const dx of[0,-512,512]){
         const px=cxp+dx;if(px<-rad*sx*1.5||px>512+rad*sx*1.5)continue;
         lg.save();lg.translate(px,cyp);lg.scale(sx,sy);
