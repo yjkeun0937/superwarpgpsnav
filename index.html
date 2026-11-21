@@ -2935,7 +2935,7 @@ function glPlanetBody(b,x,y,r,rot){   // 행성의 구 부분(표면·구름·�
     let a=GLATM[b.kind];if(b.kind==='gas')a=[GASATM[b.gp],.62,1,0];if(!a)return false;
     let k=a[1];if(b.kind==='barren')k=b.o.lava?.5:.12;
     const lt=bodyLight(b);
-    return glSphere({x,y,r,L:lt.L,tilt:b.tilt,day:b.tex,cloud:b.clouds,lights:b.lights,always:b.kind==='machine'||!!b.lava,rD:rot,rC:rot,rL:rot,lA:b.kind==='city'?1:b.kind==='machine'?1:b.lava?.95:1.15,
+    return glSphere({x,y,r,L:lt.L,tilt:b.tilt,day:b.tex,cloud:b.clouds,lights:b.lights,always:b.kind==='machine'||b.kind==='city'||!!b.lava,rD:rot,rC:rot,rL:rot,lA:b.kind==='city'?1:b.kind==='machine'?1:b.lava?.95:1.15,
       lo:.02,glow:b.kind==='city',atm:a[0].map(v=>v/255),k,halo:true});
   }catch(e){glFail(e);return false}
 }
